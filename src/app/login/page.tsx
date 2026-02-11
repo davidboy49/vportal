@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInAnonymously } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,15 @@ function LoginForm() {
         }
     };
 
+    const handleGuestSignIn = async () => {
+        try {
+            await signInAnonymously(auth);
+            // Redirection is handled by the useEffect above
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
     return (
         <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
             <Card className="w-full max-w-md">
@@ -93,9 +102,12 @@ function LoginForm() {
                             {isSignUp ? "Sign Up" : "Login"}
                         </Button>
                     </form>
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-2">
                         <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
                             Sign in with Google
+                        </Button>
+                        <Button variant="secondary" className="w-full" onClick={handleGuestSignIn}>
+                            Continue as Guest
                         </Button>
                     </div>
                 </CardContent>
