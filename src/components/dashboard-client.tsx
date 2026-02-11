@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
 import { bootstrapAdmin } from "@/actions/auth";
@@ -27,13 +28,28 @@ export function DashboardClient({
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [favorites, setFavorites] = useState<Set<string>>(new Set(initialFavorites));
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // Bootstrap admin on load if needed
-    useState(() => {
-        if (user) {
-            user.getIdToken().then(token => bootstrapAdmin(token));
-        }
-    });
+    useEffect(() => {
+        const bootstrapAndCheckRole = async () => {
+            if (!user) {
+                setIsAdmin(false);
+                return;
+            }
+
+            try {
+                const token = await user.getIdToken();
+                await bootstrapAdmin(token);
+                const tokenResult = await user.getIdTokenResult(true);
+                setIsAdmin(tokenResult.claims.role === "ADMIN");
+            } catch {
+                setIsAdmin(false);
+            }
+        };
+
+        bootstrapAndCheckRole();
+    }, [user]);
 
     const filteredApps = useMemo(() => {
         return initialApps.filter(app => {
@@ -69,6 +85,11 @@ export function DashboardClient({
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
+                    {isAdmin && (
+                        <Button variant="outline" asChild>
+                            <Link href="/admin">Go to Admin</Link>
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={() => signOut()}>Logout</Button>
                 </div>
             </div>
