@@ -66,8 +66,8 @@ function LoginForm() {
     };
 
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
-            <Card className="w-full max-w-md">
+        <div className="flex min-h-screen w-full items-center justify-center px-4 py-8">
+            <Card className="w-full max-w-md transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                 <CardHeader>
                     <CardTitle>{isSignUp ? "Create an Account" : "Welcome Back"}</CardTitle>
                     <CardDescription>
@@ -123,7 +123,7 @@ function LoginForm() {
 
 export default function LoginPage() {
     return (
-        <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
             <LoginForm />
         </Suspense>
     );
