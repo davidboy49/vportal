@@ -33,7 +33,7 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground">Manage your portal content and settings.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card>
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                     <CardHeader>
                         <CardTitle>Apps</CardTitle>
                         <CardDescription>Manage applications listed in the portal.</CardDescription>
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                     <CardHeader>
                         <CardTitle>Categories</CardTitle>
                         <CardDescription>Organize apps into categories.</CardDescription>
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                     <CardHeader>
                         <CardTitle>Users</CardTitle>
                         <CardDescription>Manage user roles and access.</CardDescription>
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                     <CardHeader>
                         <CardTitle>Settings</CardTitle>
                         <CardDescription>Global portal configuration.</CardDescription>
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-yellow-500/50 bg-yellow-50/10 dark:bg-yellow-900/10">
+                <Card className="border-yellow-500/50 bg-yellow-50/10 transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl dark:bg-yellow-900/10">
                     <CardHeader>
                         <CardTitle>System Actions</CardTitle>
                         <CardDescription>Maintenance tasks.</CardDescription>

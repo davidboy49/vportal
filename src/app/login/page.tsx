@@ -67,7 +67,7 @@ function LoginForm() {
 
     return (
         <div className="flex min-h-screen w-full items-center justify-center px-4 py-8">
-            <Card className="w-full max-w-md">
+            <Card className="w-full max-w-md transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                 <CardHeader>
                     <CardTitle>{isSignUp ? "Create an Account" : "Welcome Back"}</CardTitle>
                     <CardDescription>
