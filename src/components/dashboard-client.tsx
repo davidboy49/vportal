@@ -43,7 +43,6 @@ export function DashboardClient({
     });
     const [draggingCategoryId, setDraggingCategoryId] = useState<string | null>(null);
 
-    void initialRecent;
 
     const orderedCategories = useMemo(() => {
         const categoriesById = new Map(categories.map((category) => [category.id, category]));
@@ -97,6 +96,13 @@ export function DashboardClient({
             });
     }, [initialApps, orderedCategories, search, selectedCategory]);
 
+    const recentApps = useMemo(() => {
+        const recentOrder = new Map(initialRecent.map((appId, index) => [appId, index]));
+
+        return initialApps
+            .filter((app) => recentOrder.has(app.id))
+            .sort((a, b) => (recentOrder.get(a.id) ?? 0) - (recentOrder.get(b.id) ?? 0));
+    }, [initialApps, initialRecent]);
 
     const favoriteApps = useMemo(() => {
         return initialApps.filter(app => favorites.has(app.id));
@@ -106,12 +112,16 @@ export function DashboardClient({
         if (fromCategoryId === toCategoryId) return;
 
         setCategoryOrderIds((current) => {
-            const currentOrder = orderedCategories.map((category) => category.id);
-            const fromIndex = currentOrder.findIndex((id) => id === fromCategoryId);
-            const toIndex = currentOrder.findIndex((id) => id === toCategoryId);
+            const categoryIds = new Set(categories.map((category) => category.id));
+            const currentOrder = current.filter((id) => categoryIds.has(id));
+            const missingIds = categories.map((category) => category.id).filter((id) => !currentOrder.includes(id));
+            const normalizedOrder = [...currentOrder, ...missingIds];
+
+            const fromIndex = normalizedOrder.findIndex((id) => id === fromCategoryId);
+            const toIndex = normalizedOrder.findIndex((id) => id === toCategoryId);
             if (fromIndex === -1 || toIndex === -1) return current;
 
-            const next = [...currentOrder];
+            const next = [...normalizedOrder];
             const [moved] = next.splice(fromIndex, 1);
             next.splice(toIndex, 0, moved);
             window.localStorage.setItem("vportal-category-order", JSON.stringify(next));
@@ -185,6 +195,27 @@ export function DashboardClient({
                                 if (isFav) next.add(id); else next.delete(id);
                                 setFavorites(next);
                             }} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Recent Section */}
+            {recentApps.length > 0 && (
+                <section>
+                    <h2 className="text-xl font-semibold mb-4">Recent</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {recentApps.map(app => (
+                            <AppCard
+                                key={app.id}
+                                app={app}
+                                isFavorite={favorites.has(app.id)}
+                                onToggleFavorite={(id, isFav) => {
+                                    const next = new Set(favorites);
+                                    if (isFav) next.add(id); else next.delete(id);
+                                    setFavorites(next);
+                                }}
+                            />
                         ))}
                     </div>
                 </section>

@@ -37,7 +37,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         if (!name.trim() || !url.trim() || !categoryId) {
             const message = "Missing required fields: Name, URL, and Category are mandatory.";
             setErrorMessage(message);
-            alert(message);
+            alert(`Admin alert: ${message}`);
             return;
         }
 
@@ -46,10 +46,6 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
 
         try {
             const token = await user.getIdToken();
-            // AppSchema expects tags as array if directly parsed, but our schema transform handles comma string.
-            // Wait, schema transform expects string -> array. 
-            // So detailed implementation:
-
             const data = {
                 name,
                 url,
