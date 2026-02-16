@@ -29,6 +29,30 @@ export function DashboardClient({
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [favorites, setFavorites] = useState<Set<string>>(new Set(initialFavorites));
     const [isAdmin, setIsAdmin] = useState(false);
+    const [categoryOrderIds, setCategoryOrderIds] = useState<string[]>(() => {
+        if (typeof window === "undefined") return categories.map((category) => category.id);
+
+        try {
+            const storedOrder = window.localStorage.getItem("vportal-category-order");
+            if (!storedOrder) return categories.map((category) => category.id);
+            const parsed = JSON.parse(storedOrder);
+            return Array.isArray(parsed) ? parsed : categories.map((category) => category.id);
+        } catch {
+            return categories.map((category) => category.id);
+        }
+    });
+    const [draggingCategoryId, setDraggingCategoryId] = useState<string | null>(null);
+
+
+    const orderedCategories = useMemo(() => {
+        const categoriesById = new Map(categories.map((category) => [category.id, category]));
+        const preferredCategories = categoryOrderIds
+            .map((categoryId) => categoriesById.get(categoryId))
+            .filter((category): category is Category => Boolean(category));
+        const missingCategories = categories.filter((category) => !categoryOrderIds.includes(category.id));
+
+        return [...preferredCategories, ...missingCategories];
+    }, [categories, categoryOrderIds]);
 
     // Bootstrap admin on load if needed
     useEffect(() => {
@@ -52,22 +76,58 @@ export function DashboardClient({
     }, [user]);
 
     const filteredApps = useMemo(() => {
-        return initialApps.filter(app => {
-            const matchesSearch = app.name.toLowerCase().includes(search.toLowerCase()) ||
-                app.description?.toLowerCase().includes(search.toLowerCase()) ||
-                app.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
-            const matchesCategory = selectedCategory ? app.categoryId === selectedCategory : true;
-            return matchesSearch && matchesCategory;
-        });
-    }, [initialApps, search, selectedCategory]);
+        const categoryOrder = new Map(orderedCategories.map((category, index) => [category.id, index]));
+
+        return initialApps
+            .filter(app => {
+                const matchesSearch = app.name.toLowerCase().includes(search.toLowerCase()) ||
+                    app.description?.toLowerCase().includes(search.toLowerCase()) ||
+                    app.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+                const matchesCategory = selectedCategory ? app.categoryId === selectedCategory : true;
+                return matchesSearch && matchesCategory;
+            })
+            .sort((a, b) => {
+                const categoryIndexA = categoryOrder.get(a.categoryId) ?? Number.MAX_SAFE_INTEGER;
+                const categoryIndexB = categoryOrder.get(b.categoryId) ?? Number.MAX_SAFE_INTEGER;
+                if (categoryIndexA !== categoryIndexB) {
+                    return categoryIndexA - categoryIndexB;
+                }
+                return a.name.localeCompare(b.name);
+            });
+    }, [initialApps, orderedCategories, search, selectedCategory]);
 
     const recentApps = useMemo(() => {
-        return initialApps.filter(app => initialRecent.includes(app.id));
+        const recentOrder = new Map(initialRecent.map((appId, index) => [appId, index]));
+
+        return initialApps
+            .filter((app) => recentOrder.has(app.id))
+            .sort((a, b) => (recentOrder.get(a.id) ?? 0) - (recentOrder.get(b.id) ?? 0));
     }, [initialApps, initialRecent]);
 
     const favoriteApps = useMemo(() => {
         return initialApps.filter(app => favorites.has(app.id));
     }, [initialApps, favorites]);
+
+    const moveCategory = (fromCategoryId: string, toCategoryId: string) => {
+        if (fromCategoryId === toCategoryId) return;
+
+        setCategoryOrderIds((current) => {
+            const categoryIds = new Set(categories.map((category) => category.id));
+            const currentOrder = current.filter((id) => categoryIds.has(id));
+            const missingIds = categories.map((category) => category.id).filter((id) => !currentOrder.includes(id));
+            const normalizedOrder = [...currentOrder, ...missingIds];
+
+            const fromIndex = normalizedOrder.findIndex((id) => id === fromCategoryId);
+            const toIndex = normalizedOrder.findIndex((id) => id === toCategoryId);
+            if (fromIndex === -1 || toIndex === -1) return current;
+
+            const next = [...normalizedOrder];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            window.localStorage.setItem("vportal-category-order", JSON.stringify(next));
+            return next;
+        });
+    };
 
     return (
         <div className="min-h-screen bg-background p-6 space-y-8">
@@ -103,12 +163,21 @@ export function DashboardClient({
                 >
                     All
                 </Badge>
-                {categories.map(cat => (
+                {orderedCategories.map(cat => (
                     <Badge
                         key={cat.id}
                         variant={selectedCategory === cat.id ? "default" : "outline"}
                         className="cursor-pointer"
                         onClick={() => setSelectedCategory(cat.id)}
+                        draggable
+                        onDragStart={() => setDraggingCategoryId(cat.id)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => {
+                            if (!draggingCategoryId) return;
+                            moveCategory(draggingCategoryId, cat.id);
+                            setDraggingCategoryId(null);
+                        }}
+                        onDragEnd={() => setDraggingCategoryId(null)}
                     >
                         {cat.name}
                     </Badge>
@@ -126,6 +195,27 @@ export function DashboardClient({
                                 if (isFav) next.add(id); else next.delete(id);
                                 setFavorites(next);
                             }} />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Recent Section */}
+            {recentApps.length > 0 && (
+                <section>
+                    <h2 className="text-xl font-semibold mb-4">Recent</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {recentApps.map(app => (
+                            <AppCard
+                                key={app.id}
+                                app={app}
+                                isFavorite={favorites.has(app.id)}
+                                onToggleFavorite={(id, isFav) => {
+                                    const next = new Set(favorites);
+                                    if (isFav) next.add(id); else next.delete(id);
+                                    setFavorites(next);
+                                }}
+                            />
                         ))}
                     </div>
                 </section>
