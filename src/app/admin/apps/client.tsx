@@ -19,6 +19,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [editingApp, setEditingApp] = useState<App | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Form State
     const [name, setName] = useState("");
@@ -32,14 +33,19 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
+
+        if (!name.trim() || !url.trim() || !categoryId) {
+            const message = "Missing required fields: Name, URL, and Category are mandatory.";
+            setErrorMessage(message);
+            alert(`Admin alert: ${message}`);
+            return;
+        }
+
         setLoading(true);
+        setErrorMessage(null);
 
         try {
             const token = await user.getIdToken();
-            // AppSchema expects tags as array if directly parsed, but our schema transform handles comma string.
-            // Wait, schema transform expects string -> array. 
-            // So detailed implementation:
-
             const data = {
                 name,
                 url,
@@ -50,15 +56,52 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 isActive
             };
 
-            if (editingApp) {
-                await updateApp(token, editingApp.id, data);
-            } else {
-                await createApp(token, data);
+            const result = editingApp
+                ? await updateApp(token, editingApp.id, data)
+                : await createApp(token, data);
+
+            if (!result.success) {
+                const message = result.message || "Failed to save app.";
+                setErrorMessage(message);
+                alert(`Admin alert: ${message}`);
+                return;
             }
+
+            if (editingApp) {
+                setApps((current) => current.map((app) => (
+                    app.id === editingApp.id
+                        ? {
+                            ...app,
+                            ...data,
+                            tags: data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
+                        }
+                        : app
+                )));
+            } else {
+                setApps((current) => [
+                    ...current,
+                    {
+                        id: result.id,
+                        name: data.name,
+                        url: data.url,
+                        description: data.description,
+                        iconUrl: data.iconUrl,
+                        categoryId: data.categoryId,
+                        tags: data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
+                        isActive: data.isActive,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                    }
+                ]);
+            }
+
             setIsOpen(false);
             resetForm();
         } catch (error) {
+            const message = "Unexpected error while saving app.";
             console.error(error);
+            setErrorMessage(message);
+            alert(`Admin alert: ${message}`);
         } finally {
             setLoading(false);
         }
@@ -69,9 +112,20 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         if (!user) return;
         try {
             const token = await user.getIdToken();
-            await deleteApp(token, id);
+            const result = await deleteApp(token, id);
+            if (!result.success) {
+                const message = result.message || "Failed to delete app.";
+                setErrorMessage(message);
+                alert(`Admin alert: ${message}`);
+                return;
+            }
+
+            setApps((current) => current.filter((app) => app.id !== id));
         } catch (error) {
             console.error(error);
+            const message = "Unexpected error while deleting app.";
+            setErrorMessage(message);
+            alert(`Admin alert: ${message}`);
         }
     };
 
@@ -177,10 +231,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {initialApps.map((app) => (
+                    {apps.map((app) => (
                         <TableRow key={app.id}>
                             <TableCell>
-                                {app.iconUrl && <img src={app.iconUrl} className="w-8 h-8 rounded bg-muted object-contain" />}
+                                {app.iconUrl && <img src={app.iconUrl} alt={`${app.name} icon`} className="w-8 h-8 rounded bg-muted object-contain" />}
                             </TableCell>
                             <TableCell className="font-medium">{app.name}</TableCell>
                             <TableCell>{categories.find(c => c.id === app.categoryId)?.name || "Unknown"}</TableCell>
@@ -198,6 +252,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     ))}
                 </TableBody>
             </Table>
+
+            {errorMessage && (
+                <p className="text-sm text-red-500">{errorMessage}</p>
+            )}
         </div>
     );
 }
