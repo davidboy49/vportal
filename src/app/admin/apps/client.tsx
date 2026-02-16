@@ -68,6 +68,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
             }
 
             if (editingApp) {
+                const result = await updateApp(token, editingApp.id, data);
+                if (!result.success) {
+                    const message = result.message || "Failed to save app.";
+                    setErrorMessage(message);
+                    alert(`Admin alert: ${message}`);
+                    return;
+                }
+
                 setApps((current) => current.map((app) => (
                     app.id === editingApp.id
                         ? {
@@ -78,6 +86,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         : app
                 )));
             } else {
+                const result = await createApp(token, data);
+                if (!result.success || !result.id) {
+                    const message = result.message || "Failed to save app.";
+                    setErrorMessage(message);
+                    alert(`Admin alert: ${message}`);
+                    return;
+                }
+
                 setApps((current) => [
                     ...current,
                     {
