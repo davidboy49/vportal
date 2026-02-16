@@ -56,6 +56,17 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 isActive
             };
 
+            const result = editingApp
+                ? await updateApp(token, editingApp.id, data)
+                : await createApp(token, data);
+
+            if (!result.success) {
+                const message = result.message || "Failed to save app.";
+                setErrorMessage(message);
+                alert(`Admin alert: ${message}`);
+                return;
+            }
+
             if (editingApp) {
                 const result = await updateApp(token, editingApp.id, data);
                 if (!result.success) {
