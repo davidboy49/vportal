@@ -2,6 +2,7 @@
 
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { verifyIdToken } from "@/lib/auth";
+import { logAdminChange } from "@/lib/admin-change-log";
 import { revalidatePath } from "next/cache";
 
 async function verifyAdmin(idToken: string) {
@@ -50,7 +51,7 @@ export async function getUsers(idToken: string, limit = 50) {
 
 export async function setUserRole(idToken: string, targetUid: string, role: "ADMIN" | "USER") {
     try {
-        await verifyAdmin(idToken);
+        const admin = await verifyAdmin(idToken);
         if (!adminAuth || !adminDb) throw new Error("Firebase Admin not initialized");
 
         // Set custom claim
@@ -58,6 +59,14 @@ export async function setUserRole(idToken: string, targetUid: string, role: "ADM
 
         // Update Firestore
         await adminDb.collection("users").doc(targetUid).set({ role }, { merge: true });
+
+        await logAdminChange(admin, {
+            action: "SET_USER_ROLE",
+            targetType: "user",
+            targetId: targetUid,
+            message: `Updated user ${targetUid} role to ${role}`,
+            metadata: { role },
+        });
 
         revalidatePath("/admin/users");
         return { success: true };

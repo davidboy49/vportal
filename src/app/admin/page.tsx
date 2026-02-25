@@ -81,6 +81,19 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
+
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
+                    <CardHeader>
+                        <CardTitle>Change Logs</CardTitle>
+                        <CardDescription>Review recent admin actions and audits.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild className="w-full">
+                            <Link href="/admin/changelog">View Change Logs</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
                 <Card className="border-yellow-500/50 bg-yellow-50/10 transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl dark:bg-yellow-900/10">
                     <CardHeader>
                         <CardTitle>System Actions</CardTitle>

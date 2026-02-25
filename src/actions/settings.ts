@@ -2,6 +2,7 @@
 
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyIdToken } from "@/lib/auth";
+import { logAdminChange } from "@/lib/admin-change-log";
 import { SettingsSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 
@@ -15,12 +16,20 @@ async function verifyAdmin(idToken: string) {
 
 export async function updateSettings(idToken: string, data: any) {
     try {
-        await verifyAdmin(idToken);
+        const admin = await verifyAdmin(idToken);
         const validated = SettingsSchema.parse(data);
 
         if (!adminDb) throw new Error("Database not initialized");
 
         await adminDb.collection("settings").doc("global").set(validated, { merge: true });
+
+        await logAdminChange(admin, {
+            action: "UPDATE_SETTINGS",
+            targetType: "settings",
+            targetId: "global",
+            message: "Updated global portal settings",
+            metadata: validated,
+        });
 
         revalidatePath("/");
         revalidatePath("/admin/settings");
