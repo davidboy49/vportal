@@ -1,8 +1,7 @@
 import { adminDb } from "./firebase/admin";
 import { App, Category } from "./types";
-import { cache } from "react";
 
-export const getApps = cache(async (): Promise<App[]> => {
+export async function getApps(): Promise<App[]> {
     if (!adminDb) return [];
 
     const snapshot = await adminDb.collection("apps")
@@ -11,9 +10,9 @@ export const getApps = cache(async (): Promise<App[]> => {
         .get();
 
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
-});
+}
 
-export const getCategories = cache(async (): Promise<Category[]> => {
+export async function getCategories(): Promise<Category[]> {
     if (!adminDb) return [];
 
     const snapshot = await adminDb.collection("categories")
@@ -22,9 +21,9 @@ export const getCategories = cache(async (): Promise<Category[]> => {
         .get();
 
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-});
+}
 
-export const getUserData = cache(async (uid: string) => {
+export async function getUserData(uid: string) {
     if (!adminDb) return null;
 
     // Parallel fetch favorites and recent
@@ -37,4 +36,4 @@ export const getUserData = cache(async (uid: string) => {
         favorites: favSnap.docs.map(doc => doc.id),
         recent: recentSnap.docs.map(doc => doc.id)
     };
-});
+}

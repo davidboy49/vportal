@@ -70,6 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Link href="/admin/apps">Apps</Link>
                         <Link href="/admin/categories">Categories</Link>
                         <Link href="/admin/users">Users</Link>
+                        <Link href="/admin/changelog">Change Logs</Link>
                     </nav>
                 </div>
                 <Button variant="ghost" asChild>

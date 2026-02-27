@@ -2,6 +2,7 @@
 
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyIdToken } from "@/lib/auth";
+import { logAdminChange } from "@/lib/admin-change-log";
 import { revalidatePath } from "next/cache";
 
 export async function seedData(idToken: string) {
@@ -74,6 +75,13 @@ export async function seedData(idToken: string) {
         batch.set(settingsRef, { portalName: "VPortal", logoUrl: "" }, { merge: true });
 
         await batch.commit();
+
+        await logAdminChange(user, {
+            action: "SEED_DATA",
+            targetType: "system",
+            message: "Seeded initial categories, apps, and settings",
+            metadata: { categories: categories.length, apps: apps.length },
+        });
 
         revalidatePath("/");
         return { success: true, message: "Data seeded successfully" };
