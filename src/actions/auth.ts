@@ -10,6 +10,10 @@ export async function bootstrapAdmin(idToken: string) {
         return { success: false, message: "Not authenticated" };
     }
 
+    if (!user.email) {
+        return { success: false, message: "Anonymous users cannot be admins" };
+    }
+
     const adminEmail = process.env.ADMIN_EMAIL;
 
     console.log(`Checking bootstrap for ${user.email}. Target admin: ${adminEmail}`);

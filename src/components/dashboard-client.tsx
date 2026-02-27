@@ -30,7 +30,7 @@ export function DashboardClient({
 
     // Bootstrap admin on load if needed
     useState(() => {
-        if (user) {
+        if (user && !user.isAnonymous) {
             user.getIdToken().then(token => bootstrapAdmin(token));
         }
     });

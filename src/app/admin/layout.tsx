@@ -21,6 +21,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     return;
                 }
 
+                if (user.isAnonymous) {
+                    console.log("Anonymous user detected in admin portal, redirecting...");
+                    router.push("/");
+                    return;
+                }
+
                 try {
                     // First, try to bootstrap admin if user matches ADMIN_EMAIL
                     const token = await user.getIdToken();
