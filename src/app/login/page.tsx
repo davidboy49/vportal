@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { text } from "stream/consumers";
 
 function LoginForm() {
-    const [email, setEmail] = useState("");
+    const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
@@ -36,10 +36,11 @@ function LoginForm() {
         e.preventDefault();
         setError("");
         try {
+            const emailToUse = identifier.includes("@") ? identifier : `${identifier}@vportal.app`;
             if (isSignUp) {
-                await createUserWithEmailAndPassword(auth, email, password);
+                await createUserWithEmailAndPassword(auth, emailToUse, password);
             } else {
-                await signInWithEmailAndPassword(auth, email, password);
+                await signInWithEmailAndPassword(auth, emailToUse, password);
             }
             // router.push(redirectUrl); // Removed: handled by useEffect when user state updates
         } catch (err: any) {
@@ -78,13 +79,13 @@ function LoginForm() {
                 <CardContent>
                     <form onSubmit={handleAuth} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="identifier">Username or Email</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                placeholder="imyours@me.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                id="identifier"
+                                type="text"
+                                placeholder="username or you@example.com"
+                                value={identifier}
+                                onChange={(e) => setIdentifier(e.target.value)}
                                 required
                             />
                         </div>
