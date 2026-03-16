@@ -64,7 +64,7 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
             </CardHeader>
             <CardContent className="flex-1">
                 <div className="flex flex-wrap gap-2">
-                    {app.tags.map(tag => (
+                    {(app.tags || []).map(tag => (
                         <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                     ))}
                 </div>

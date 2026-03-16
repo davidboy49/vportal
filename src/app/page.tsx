@@ -5,7 +5,7 @@ import { DashboardClient } from "@/components/dashboard-client";
 import { App, Category } from "@/lib/types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { db } from "@/lib/firebase/client";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 
 export default function Dashboard() {
   const { user, loading } = useRequireAuth();
@@ -18,57 +18,56 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
 
-    const fetchData = async () => {
-      try {
-        // Fetch apps
-        const appsQuery = query(
-          collection(db, "apps"),
-          where("isActive", "==", true)
-        );
-        const appsSnapshot = await getDocs(appsQuery);
-        const appsData = appsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as App[];
+    let appsLoaded = false;
+    let categoriesLoaded = false;
+    let userDataLoaded = false;
 
-        // Fetch categories
-        const categoriesQuery = query(
-          collection(db, "categories"),
-          where("isActive", "==", true)
-          // TODO: Add back orderBy("sortOrder", "asc") after creating composite index
-        );
-        const categoriesSnapshot = await getDocs(categoriesQuery);
-        const categoriesData = categoriesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Category[];
-
-        // Fetch user favorites
-        const favoritesQuery = collection(db, "users", user.uid, "favorites");
-        const favoritesSnapshot = await getDocs(favoritesQuery);
-        const favoritesData = favoritesSnapshot.docs.map(doc => doc.id);
-
-        // Fetch user recent
-        const recentQuery = query(
-          collection(db, "users", user.uid, "recent"),
-          orderBy("lastOpenedAt", "desc"),
-          limit(10)
-        );
-        const recentSnapshot = await getDocs(recentQuery);
-        const recentData = recentSnapshot.docs.map(doc => doc.id);
-
-        setApps(appsData);
-        setCategories(categoriesData);
-        setFavorites(favoritesData);
-        setRecent(recentData);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
+    const checkLoading = () => {
+      if (appsLoaded && categoriesLoaded && userDataLoaded) {
         setDataLoading(false);
       }
     };
 
-    fetchData();
+    // Real-time listener for apps
+    const appsQuery = query(collection(db, "apps"));
+    const unsubscribeApps = onSnapshot(appsQuery, (snapshot) => {
+      const allApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as App[];
+      setApps(allApps.filter(app => app.isActive !== false));
+      appsLoaded = true;
+      checkLoading();
+    }, (error) => console.error("Error fetching apps:", error));
+
+    // Real-time listener for categories
+    const categoriesQuery = query(collection(db, "categories"));
+    const unsubscribeCategories = onSnapshot(categoriesQuery, (snapshot) => {
+      const allCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Category[];
+      setCategories(allCategories.filter(cat => cat.isActive !== false));
+      categoriesLoaded = true;
+      checkLoading();
+    }, (error) => console.error("Error fetching categories:", error));
+
+    const fetchUserData = async () => {
+      try {
+        const favoritesSnapshot = await getDocs(collection(db, "users", user.uid, "favorites"));
+        setFavorites(favoritesSnapshot.docs.map(doc => doc.id));
+
+        const recentQuery = query(collection(db, "users", user.uid, "recent"), orderBy("lastOpenedAt", "desc"), limit(10));
+        const recentSnapshot = await getDocs(recentQuery);
+        setRecent(recentSnapshot.docs.map(doc => doc.id));
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        userDataLoaded = true;
+        checkLoading();
+      }
+    };
+
+    fetchUserData();
+
+    return () => {
+      unsubscribeApps();
+      unsubscribeCategories();
+    };
   }, [user]);
 
   if (loading || dataLoading) {

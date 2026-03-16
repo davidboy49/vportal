@@ -80,9 +80,9 @@ export function DashboardClient({
 
         return initialApps
             .filter(app => {
-                const matchesSearch = app.name.toLowerCase().includes(search.toLowerCase()) ||
-                    app.description?.toLowerCase().includes(search.toLowerCase()) ||
-                    app.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+                const matchesSearch = (app.name || "").toLowerCase().includes(search.toLowerCase()) ||
+                    (app.description || "").toLowerCase().includes(search.toLowerCase()) ||
+                    (app.tags || []).some(tag => tag.toLowerCase().includes(search.toLowerCase()));
                 const matchesCategory = selectedCategory ? app.categoryId === selectedCategory : true;
                 return matchesSearch && matchesCategory;
             })
@@ -92,7 +92,7 @@ export function DashboardClient({
                 if (categoryIndexA !== categoryIndexB) {
                     return categoryIndexA - categoryIndexB;
                 }
-                return a.name.localeCompare(b.name);
+                return (a.name || "").localeCompare(b.name || "");
             });
     }, [initialApps, orderedCategories, search, selectedCategory]);
 

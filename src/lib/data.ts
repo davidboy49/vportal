@@ -5,7 +5,6 @@ export async function getApps(): Promise<App[]> {
     if (!adminDb) return [];
 
     const snapshot = await adminDb.collection("apps")
-        .where("isActive", "==", true)
         // .orderBy("createdAt", "desc") // requires index
         .get();
 
@@ -16,7 +15,6 @@ export async function getCategories(): Promise<Category[]> {
     if (!adminDb) return [];
 
     const snapshot = await adminDb.collection("categories")
-        .where("isActive", "==", true)
         .orderBy("sortOrder", "asc")
         .get();
 
