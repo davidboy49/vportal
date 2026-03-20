@@ -132,8 +132,8 @@ export function DashboardClient({
     return (
         <div className="min-h-screen bg-background p-6 space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h1 className="text-3xl font-bold tracking-tight">VPortal by ViD</h1>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#D71F37] p-4 rounded-xl text-white">
+                <h1 className="text-3xl font-bold tracking-tight text-white">VPortal</h1>
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -146,11 +146,11 @@ export function DashboardClient({
                         />
                     </div>
                     {isAdmin && (
-                        <Button variant="outline" asChild>
+                        <Button variant="outline" asChild className="text-black">
                             <Link href="/admin">Go to Admin</Link>
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => signOut()}>Logout</Button>
+                    <Button variant="outline" onClick={() => signOut()} className="text-black">Logout</Button>
                 </div>
             </div>
 
