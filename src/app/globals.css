@@ -5,8 +5,9 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
+    /* --background: FCF5EE; */
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
+    /* --card: 0 0% 100%; */
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -15,11 +16,11 @@
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* --muted-foreground: 215.4 16.3% 46.9%; */
     --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* --accent-foreground: 222.2 47.4% 11.2%; */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* --destructive-foreground: 210 40% 98%; */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
@@ -94,32 +95,36 @@
 
   .dark body {
     background-image:
-      radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.2), transparent 44%),
+      radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.2), transparent 100%),
       radial-gradient(circle at 85% 15%, rgba(14, 165, 233, 0.18), transparent 40%),
       radial-gradient(circle at 50% 85%, rgba(168, 85, 247, 0.2), transparent 45%);
   }
 }
 
-@keyframes antigravity-drift {
+/* @keyframes antigravity-drift {
   0% {
     background-position: 0% 0%, 100% 0%, 50% 100%;
   }
+
   50% {
     background-position: 6% 8%, 92% 6%, 45% 90%;
   }
+
   100% {
     background-position: 12% 16%, 84% 12%, 40% 80%;
   }
-}
+} */
 
 @keyframes antigravity-float {
   0% {
-    transform: translate3d(-1.5%, -1%, 0) scale(1) rotate(-2deg);
+    transform: translate3d(-100%, -1%, 20) scale(1) rotate(-2deg);
   }
+
   50% {
-    transform: translate3d(1%, 1.5%, 0) scale(1.08) rotate(2deg);
+    transform: translate3d(1%, 1.5%, 20) scale(1.08) rotate(2deg);
   }
+
   100% {
-    transform: translate3d(2.5%, -1.5%, 0) scale(1.12) rotate(4deg);
+    transform: translate3d(2.5%, -1.5%, 20) scale(1.12) rotate(4deg);
   }
 }
