@@ -14,7 +14,7 @@ async function verifyAdmin(idToken: string) {
     return decodedToken;
 }
 
-export async function updateSettings(idToken: string, data: any) {
+export async function updateSettings(idToken: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
         const validated = SettingsSchema.parse(data);
@@ -34,8 +34,9 @@ export async function updateSettings(idToken: string, data: any) {
         revalidatePath("/");
         revalidatePath("/admin/settings");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update settings";
+        return { success: false, message };
     }
 }
 

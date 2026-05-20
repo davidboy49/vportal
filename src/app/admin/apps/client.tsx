@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { App, Category } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,17 +56,6 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 tags, // Schema transform will handle split
                 isActive
             };
-
-            const result = editingApp
-                ? await updateApp(token, editingApp.id, data)
-                : await createApp(token, data);
-
-            if (!result.success) {
-                const message = result.message || "Failed to save app.";
-                setErrorMessage(message);
-                alert(`Admin alert: ${message}`);
-                return;
-            }
 
             if (editingApp) {
                 const result = await updateApp(token, editingApp.id, data);
@@ -250,7 +240,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     {apps.map((app) => (
                         <TableRow key={app.id}>
                             <TableCell>
-                                {app.iconUrl && <img src={app.iconUrl} alt={`${app.name} icon`} className="w-8 h-8 rounded bg-muted object-contain" />}
+                                {app.iconUrl && <Image src={app.iconUrl} alt={`${app.name} icon`} width={32} height={32} unoptimized className="w-8 h-8 rounded bg-muted object-contain" />}
                             </TableCell>
                             <TableCell className="font-medium">{app.name}</TableCell>
                             <TableCell>{categories.find(c => c.id === app.categoryId)?.name || "Unknown"}</TableCell>

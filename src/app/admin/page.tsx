@@ -20,8 +20,8 @@ export default function AdminDashboard() {
             const token = await user.getIdToken();
             const res = await seedData(token);
             alert(res.message);
-        } catch (e: any) {
-            alert(e.message);
+        } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : "Failed to seed data");
         } finally {
             setLoading(false);
         }

@@ -14,7 +14,7 @@ async function verifyAdmin(idToken: string) {
     return decodedToken;
 }
 
-export async function createCategory(idToken: string, data: any) {
+export async function createCategory(idToken: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
         const validated = CategorySchema.parse(data);
@@ -34,12 +34,13 @@ export async function createCategory(idToken: string, data: any) {
         revalidatePath("/admin/categories");
         revalidatePath("/");
         return { success: true, id: docRef.id };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to create category";
+        return { success: false, message };
     }
 }
 
-export async function updateCategory(idToken: string, catId: string, data: any) {
+export async function updateCategory(idToken: string, catId: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
         const validated = CategorySchema.parse(data);
@@ -59,8 +60,9 @@ export async function updateCategory(idToken: string, catId: string, data: any) 
         revalidatePath("/admin/categories");
         revalidatePath("/");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update category";
+        return { success: false, message };
     }
 }
 
@@ -69,19 +71,36 @@ export async function deleteCategory(idToken: string, catId: string) {
         const admin = await verifyAdmin(idToken);
         if (!adminDb) throw new Error("Database not initialized");
 
-        await adminDb.collection("categories").doc(catId).delete();
+        // Fetch associated apps
+        const appsSnapshot = await adminDb.collection("apps").where("categoryId", "==", catId).get();
+        const batch = adminDb.batch();
+
+        // Delete the category doc
+        const catRef = adminDb.collection("categories").doc(catId);
+        batch.delete(catRef);
+
+        // Reassign orphaned apps to "uncategorized" to avoid UI crashes
+        for (const appDoc of appsSnapshot.docs) {
+            batch.update(appDoc.ref, {
+                categoryId: "uncategorized",
+                updatedAt: new Date().toISOString()
+            });
+        }
+
+        await batch.commit();
 
         await logAdminChange(admin, {
             action: "DELETE_CATEGORY",
             targetType: "category",
             targetId: catId,
-            message: `Deleted category ${catId}`,
+            message: `Deleted category ${catId} and reassigned ${appsSnapshot.size} app(s) to uncategorized.`,
         });
 
         revalidatePath("/admin/categories");
         revalidatePath("/");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to delete category";
+        return { success: false, message };
     }
 }

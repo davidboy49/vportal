@@ -85,7 +85,8 @@ export async function seedData(idToken: string) {
 
         revalidatePath("/");
         return { success: true, message: "Data seeded successfully" };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to seed data";
+        return { success: false, message };
     }
 }

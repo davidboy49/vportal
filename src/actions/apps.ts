@@ -14,7 +14,7 @@ async function verifyAdmin(idToken: string) {
     return decodedToken;
 }
 
-export async function createApp(idToken: string, data: any) {
+export async function createApp(idToken: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
 
@@ -41,12 +41,13 @@ export async function createApp(idToken: string, data: any) {
         revalidatePath("/admin/apps");
         revalidatePath("/"); // Update dashboard
         return { success: true, id: docRef.id };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to create app";
+        return { success: false, message };
     }
 }
 
-export async function updateApp(idToken: string, appId: string, data: any) {
+export async function updateApp(idToken: string, appId: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
         const validated = AppSchema.parse(data);
@@ -69,8 +70,9 @@ export async function updateApp(idToken: string, appId: string, data: any) {
         revalidatePath("/admin/apps");
         revalidatePath("/");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update app";
+        return { success: false, message };
     }
 }
 
@@ -91,7 +93,8 @@ export async function deleteApp(idToken: string, appId: string) {
         revalidatePath("/admin/apps");
         revalidatePath("/");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to delete app";
+        return { success: false, message };
     }
 }

@@ -14,10 +14,10 @@ import { Label } from "@/components/ui/label";
 
 export function CategoriesClient({ initialCategories }: { initialCategories: Category[] }) {
     const { user } = useAuth();
-    const [categories, setCategories] = useState(initialCategories); // Keep local state for optimistic UI updates if desired, but we rely on revalidatePath usually
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [editingCat, setEditingCat] = useState<Category | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Form State
     const [name, setName] = useState("");
@@ -28,20 +28,26 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
         e.preventDefault();
         if (!user) return;
         setLoading(true);
+        setErrorMessage(null);
 
         try {
             const token = await user.getIdToken();
             const data = { name, sortOrder, isActive };
 
-            if (editingCat) {
-                await updateCategory(token, editingCat.id, data);
-            } else {
-                await createCategory(token, data);
+            const result = editingCat
+                ? await updateCategory(token, editingCat.id, data)
+                : await createCategory(token, data);
+
+            if (!result.success) {
+                setErrorMessage(result.message || "Failed to save category.");
+                return;
             }
+
             setIsOpen(false);
             resetForm();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
+            setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred.");
         } finally {
             setLoading(false);
         }
@@ -98,6 +104,9 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                 <Switch checked={isActive} onCheckedChange={setIsActive} />
                                 <Label>Active</Label>
                             </div>
+                            {errorMessage && (
+                                <p className="text-sm text-red-500">{errorMessage}</p>
+                            )}
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save
@@ -106,6 +115,10 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {errorMessage && (
+                <p className="text-sm text-red-500">{errorMessage}</p>
+            )}
 
             <Table>
                 <TableHeader>

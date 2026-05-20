@@ -132,25 +132,25 @@ export function DashboardClient({
     return (
         <div className="min-h-screen bg-background p-6 space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#D71F37] p-4 rounded-xl text-white">
-                <h1 className="text-3xl font-bold tracking-tight text-yellow border-green-500">VPortal</h1>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-card/60 backdrop-blur-md border border-border/40 p-4 rounded-xl shadow-sm text-card-foreground">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-teal-400 via-sky-400 to-blue-500 bg-clip-text text-transparent">VPortal</h1>
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
                             placeholder="Search apps..."
-                            className="pl-8"
+                            className="pl-8 bg-background/50 border-border/60 focus:bg-background transition-colors"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     {isAdmin && (
-                        <Button variant="outline" asChild className="text-black">
+                        <Button variant="outline" asChild className="border-border/60 hover:bg-accent">
                             <Link href="/admin">Go to Admin</Link>
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => signOut()} className="text-black">Logout</Button>
+                    <Button variant="outline" onClick={() => signOut()} className="border-border/60 hover:bg-destructive/10 hover:text-destructive transition-colors">Logout</Button>
                 </div>
             </div>
 

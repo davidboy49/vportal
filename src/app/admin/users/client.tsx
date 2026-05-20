@@ -1,19 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { UserData } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { getUsers, setUserRole } from "@/actions/users";
 import { Loader2, Shield, ShieldOff } from "lucide-react";
 
+interface AdminUser {
+    uid: string;
+    email?: string;
+    displayName?: string;
+    photoURL?: string;
+    role: string;
+    lastSignInTime?: string;
+    creationTime?: string;
+}
+
 export function UsersClient() {
     const { user } = useAuth();
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         if (!user) return;
         try {
             const token = await user.getIdToken();
@@ -26,11 +35,11 @@ export function UsersClient() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         fetchUsers();
-    }, [user]);
+    }, [fetchUsers]);
 
     const toggleRole = async (targetUid: string, currentRole: string) => {
         if (!confirm(`Change role to ${currentRole === "ADMIN" ? "USER" : "ADMIN"}?`)) return;
@@ -70,7 +79,7 @@ export function UsersClient() {
                                     {u.role}
                                 </span>
                             </TableCell>
-                            <TableCell>{new Date(u.lastSignInTime).toLocaleDateString()}</TableCell>
+                            <TableCell>{u.lastSignInTime ? new Date(u.lastSignInTime).toLocaleDateString() : "Never signed in"}</TableCell>
                             <TableCell className="text-right">
                                 {u.email !== user?.email && (
                                     <Button variant="ghost" size="sm" onClick={() => toggleRole(u.uid, u.role)}>

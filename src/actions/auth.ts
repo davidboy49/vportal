@@ -36,9 +36,10 @@ export async function bootstrapAdmin(idToken: string) {
             }, { merge: true });
 
             return { success: true, message: "Admin role assigned" };
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error bootstrapping admin:", error);
-            return { success: false, message: error.message };
+            const message = error instanceof Error ? error.message : "Failed to bootstrap admin";
+            return { success: false, message };
         }
     }
 

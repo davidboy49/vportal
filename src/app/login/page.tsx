@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
-import { text } from "stream/consumers";
 
 function LoginForm() {
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [error, setError] = useState(() => !auth ? "Firebase Authentication is not initialized. Please verify your environment variables in .env.local." : "");
     const [isSignUp, setIsSignUp] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -35,6 +34,10 @@ function LoginForm() {
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        if (!auth) {
+            setError("Firebase Authentication is not initialized. Please verify your environment variables in .env.local.");
+            return;
+        }
         try {
             const emailToUse = identifier.includes("@") ? identifier : `${identifier}@vportal.app`;
             if (isSignUp) {
@@ -43,27 +46,37 @@ function LoginForm() {
                 await signInWithEmailAndPassword(auth, emailToUse, password);
             }
             // router.push(redirectUrl); // Removed: handled by useEffect when user state updates
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An unexpected error occurred");
         }
     };
 
     const handleGoogleSignIn = async () => {
+        setError("");
+        if (!auth) {
+            setError("Firebase Authentication is not initialized. Please verify your environment variables in .env.local.");
+            return;
+        }
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
             // router.push(redirectUrl); // Removed: handled by useEffect when user state updates
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An unexpected error occurred");
         }
     };
 
     const handleGuestSignIn = async () => {
+        setError("");
+        if (!auth) {
+            setError("Firebase Authentication is not initialized. Please verify your environment variables in .env.local.");
+            return;
+        }
         try {
             await signInAnonymously(auth);
             // Redirection is handled by the useEffect above
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An unexpected error occurred");
         }
     };
 

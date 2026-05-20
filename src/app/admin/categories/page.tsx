@@ -1,6 +1,8 @@
 import { CategoriesClient } from "./client";
 import { getCategories } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminCategoriesPage() {
     const categories = await getCategories();
     // Note: getCategories in lib/data defaults to only active ones. 

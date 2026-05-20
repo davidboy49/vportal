@@ -5,7 +5,7 @@ import { DashboardClient } from "@/components/dashboard-client";
 import { App, Category } from "@/lib/types";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { db } from "@/lib/firebase/client";
-import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 
 export default function Dashboard() {
   const { user, loading } = useRequireAuth();
@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     let appsLoaded = false;
     let categoriesLoaded = false;
@@ -72,8 +72,15 @@ export default function Dashboard() {
 
   if (loading || dataLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex h-screen items-center justify-center flex-col gap-4">
+        {!db ? (
+          <div className="text-center p-6 max-w-md bg-red-50 text-red-800 border border-red-200 rounded-lg">
+            <h2 className="font-bold text-lg mb-2">Database Initialization Error</h2>
+            <p className="text-sm">Cloud Firestore could not be initialized. Please check your Firebase configuration in your <code>.env.local</code> file.</p>
+          </div>
+        ) : (
+          "Loading..."
+        )}
       </div>
     );
   }

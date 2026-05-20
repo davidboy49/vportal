@@ -23,8 +23,9 @@ export async function toggleFavorite(idToken: string, appId: string) {
 
         revalidatePath("/");
         return { success: true, isFavorite: !doc.exists };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to toggle favorite";
+        return { success: false, message };
     }
 }
 
@@ -40,7 +41,8 @@ export async function logRecentApp(idToken: string, appId: string) {
 
         revalidatePath("/");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to log recent app";
+        return { success: false, message };
     }
 }

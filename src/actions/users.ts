@@ -20,32 +20,39 @@ export async function getUsers(idToken: string, limit = 50) {
 
         const listUsersResult = await adminAuth.listUsers(limit);
 
-        // We might want to merge with Firestore data if available, 
-        // but for now returning auth users is sufficient for listing.
-        // Ideally, we fetch from Firestore 'users' collection to get roles more easily if synced.
+        const db = adminDb;
+        if (!db) throw new Error("Database not initialized");
+        
+        // Fetch Firestore documents matching the specific UIDs retrieved from Auth
+        const uids = listUsersResult.users.map(u => u.uid);
+        let dbUsers: { uid: string; role?: string }[] = [];
 
-        // Let's fetch Firestore users to get roles
-        if (!adminDb) throw new Error("Database not initialized");
-        const snapshot = await adminDb.collection("users").limit(limit).get();
-        const dbUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+        if (uids.length > 0) {
+            const docRefs = uids.map(uid => db.collection("users").doc(uid));
+            const docs = await db.getAll(...docRefs);
+            dbUsers = docs.map(doc => ({
+                uid: doc.id,
+                ...(doc.exists ? doc.data() : {})
+            }));
+        }
 
-        // Map Auth users to combine with DB data
         const users = listUsersResult.users.map(u => {
-            const dbUser: any = dbUsers.find((du: any) => du.uid === u.uid) || {};
+            const dbUser = dbUsers.find(du => du.uid === u.uid);
             return {
                 uid: u.uid,
                 email: u.email,
                 displayName: u.displayName,
                 photoURL: u.photoURL,
-                role: dbUser.role || "USER", // fallback
+                role: dbUser?.role || "USER", // fallback
                 lastSignInTime: u.metadata.lastSignInTime,
                 creationTime: u.metadata.creationTime,
             };
         });
 
         return { success: true, users };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to get users";
+        return { success: false, message };
     }
 }
 
@@ -70,7 +77,8 @@ export async function setUserRole(idToken: string, targetUid: string, role: "ADM
 
         revalidatePath("/admin/users");
         return { success: true };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to set user role";
+        return { success: false, message };
     }
 }

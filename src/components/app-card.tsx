@@ -1,6 +1,7 @@
 "use client";
 
 import { App } from "@/lib/types";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,10 +54,10 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                        {app.iconUrl && <img src={app.iconUrl} alt={app.name} className="w-10 h-10 rounded-md object-contain bg-muted" />}
+                        {app.iconUrl && <Image src={app.iconUrl} alt={app.name} width={40} height={40} unoptimized className="w-10 h-10 rounded-md object-contain bg-muted" />}
                         <CardTitle className="text-lg">{app.name}</CardTitle>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={handleFavorite}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={handleFavorite} disabled={loading}>
                         <Heart className={cn("h-5 w-5", isFavorite && "fill-current text-red-500")} />
                     </Button>
                 </div>

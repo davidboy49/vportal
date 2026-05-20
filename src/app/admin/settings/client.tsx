@@ -8,7 +8,9 @@ import { useAuth } from "@/context/AuthContext";
 import { updateSettings } from "@/actions/settings";
 import { Loader2 } from "lucide-react";
 
-export default function AdminSettingsPage({ initialSettings }: { initialSettings: any }) {
+import Image from "next/image";
+
+export default function AdminSettingsPage({ initialSettings }: { initialSettings: { portalName?: string; logoUrl?: string } | null }) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [portalName, setPortalName] = useState(initialSettings?.portalName || "App Portal");
@@ -42,7 +44,7 @@ export default function AdminSettingsPage({ initialSettings }: { initialSettings
                 <div className="space-y-2">
                     <Label>Logo URL</Label>
                     <Input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." />
-                    {logoUrl && <img src={logoUrl} alt="Logo Preview" className="h-10 mt-2 object-contain" />}
+                    {logoUrl && <Image src={logoUrl} alt="Logo Preview" width={120} height={40} unoptimized className="h-10 mt-2 object-contain w-auto" />}
                 </div>
                 <Button type="submit" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

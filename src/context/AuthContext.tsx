@@ -25,6 +25,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
+        if (!auth) {
+            console.error("Firebase Auth is not initialized. Check your environment variables in .env.local.");
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setUser(user);
             setLoading(false);
@@ -40,6 +46,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const signOut = async () => {
         try {
+            if (!auth) {
+                throw new Error("Auth not initialized");
+            }
             await firebaseSignOut(auth);
             router.push("/login");
         } catch (error) {
