@@ -132,7 +132,7 @@ export function DashboardClient({
     return (
         <div className="min-h-screen bg-background p-6 space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-card/60 backdrop-blur-md border border-border/40 p-4 rounded-xl shadow-sm text-card-foreground">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] text-card-foreground">
                 <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-teal-400 via-sky-400 to-blue-500 bg-clip-text text-transparent">VPortal</h1>
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="relative w-full md:w-80">

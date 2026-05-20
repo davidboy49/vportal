@@ -50,7 +50,7 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
     };
 
     return (
-        <Card className="flex h-full flex-col transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] motion-safe:hover:shadow-xl">
+        <Card className="flex h-full flex-col transform-gpu transition-all duration-300 ease-out group hover:-translate-y-1.5 hover:scale-[1.02] hover:border-white/20 hover:shadow-[0_8px_40px_rgba(13,148,136,0.25),0_2px_12px_rgba(30,64,175,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]">
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
