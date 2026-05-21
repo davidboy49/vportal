@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { bootstrapAdmin } from "@/actions/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
@@ -73,9 +74,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <Link href="/admin/changelog">Change Logs</Link>
                     </nav>
                 </div>
-                <Button variant="ghost" asChild>
-                    <Link href="/">Exit to Dashboard</Link>
-                </Button>
+                <div className="flex items-center gap-4">
+                    <ThemeToggle />
+                    <Button variant="ghost" asChild>
+                        <Link href="/">Exit to Dashboard</Link>
+                    </Button>
+                </div>
             </header>
             <main className="flex-1 p-6">
                 {children}

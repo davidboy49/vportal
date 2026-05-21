@@ -69,12 +69,12 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground;
-    background-color: #111827;
+    @apply bg-background text-foreground transition-colors duration-500;
+    background-color: #f8fafc;
     background-image:
-      radial-gradient(ellipse at 15% 20%, rgba(13, 148, 136, 0.65), transparent 60%),
-      radial-gradient(ellipse at 88% 12%, rgba(30, 64, 175, 0.6), transparent 58%),
-      radial-gradient(ellipse at 50% 90%, rgba(49, 46, 129, 0.55), transparent 65%);
+      radial-gradient(ellipse at 15% 20%, rgba(13, 148, 136, 0.15), transparent 60%),
+      radial-gradient(ellipse at 88% 12%, rgba(56, 189, 248, 0.15), transparent 58%),
+      radial-gradient(ellipse at 50% 90%, rgba(99, 102, 241, 0.12), transparent 65%);
     background-size: 160% 160%;
     animation: antigravity-drift 14s ease-in-out infinite alternate;
   }
@@ -86,12 +86,28 @@
     pointer-events: none;
     z-index: -1;
     background:
-      linear-gradient(135deg, rgba(20, 184, 166, 0.2), transparent 50%),
-      radial-gradient(ellipse at 25% 35%, rgba(56, 189, 248, 0.32), transparent 45%),
-      radial-gradient(ellipse at 72% 68%, rgba(99, 102, 241, 0.28), transparent 48%);
+      linear-gradient(135deg, rgba(20, 184, 166, 0.08), transparent 50%),
+      radial-gradient(ellipse at 25% 35%, rgba(56, 189, 248, 0.12), transparent 45%),
+      radial-gradient(ellipse at 72% 68%, rgba(99, 102, 241, 0.1), transparent 48%);
     filter: blur(5px);
     transform-origin: center;
     animation: antigravity-float 16s ease-in-out infinite;
+    transition: background 0.5s ease;
+  }
+
+  .dark body {
+    background-color: #111827;
+    background-image:
+      radial-gradient(ellipse at 15% 20%, rgba(13, 148, 136, 0.65), transparent 60%),
+      radial-gradient(ellipse at 88% 12%, rgba(30, 64, 175, 0.6), transparent 58%),
+      radial-gradient(ellipse at 50% 90%, rgba(49, 46, 129, 0.55), transparent 65%);
+  }
+
+  .dark body::before {
+    background:
+      linear-gradient(135deg, rgba(20, 184, 166, 0.2), transparent 50%),
+      radial-gradient(ellipse at 25% 35%, rgba(56, 189, 248, 0.32), transparent 45%),
+      radial-gradient(ellipse at 72% 68%, rgba(99, 102, 241, 0.28), transparent 48%);
   }
 }
 
