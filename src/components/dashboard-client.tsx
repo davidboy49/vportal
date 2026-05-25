@@ -5,7 +5,7 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass } from "lucide-react";
 import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
@@ -43,6 +43,10 @@ export function DashboardClient({
     const [categoryOrderIds, setCategoryOrderIds] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [draggingCategoryId, setDraggingCategoryId] = useState<string | null>(null);
+
+    // Sidebar Layout States
+    const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent">("dashboard");
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     const orderedCategories = useMemo(() => {
         const categoriesById = new Map(categories.map((category) => [category.id, category]));
@@ -203,145 +207,445 @@ export function DashboardClient({
         );
     }
 
-    return (
-        <div className="min-h-screen p-6 space-y-8 max-w-7xl mx-auto w-full">
-            {/* Header */}
-            <div className="glass-panel flex flex-col md:flex-row justify-between items-center gap-4 p-4 rounded-xl text-card-foreground transition-all duration-300">
-                <div className="flex items-center gap-3">
+    const renderSidebarContent = () => {
+        return (
+            <div className="flex flex-col h-full text-card-foreground">
+                {/* Brand / Logo */}
+                <div className="flex items-center gap-3 px-6 py-5 border-b border-black/5 dark:border-white/5 shrink-0">
                     {globalSettings?.logoUrl && (
                         <Image
                             src={globalSettings.logoUrl}
                             alt={globalSettings.portalName || "Portal Logo"}
-                            width={40}
-                            height={40}
+                            width={32}
+                            height={32}
                             unoptimized
-                            className="w-10 h-10 rounded-md object-contain border border-black/5 dark:border-white/5 p-1 bg-white/50 dark:bg-black/20"
+                            className="w-8 h-8 rounded-md object-contain border border-black/5 dark:border-white/5 p-1 bg-white/50 dark:bg-black/20"
                         />
                     )}
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-500 bg-clip-text text-transparent font-outfit">
+                    <span className="text-xl font-black tracking-tight bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-500 bg-clip-text text-transparent font-outfit select-none">
                         {globalSettings?.portalName || "VPortal"}
-                    </h1>
+                    </span>
                 </div>
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="relative w-full md:w-80 group">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-teal-500" />
+
+                {/* Navigation Links */}
+                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-7 custom-scrollbar">
+                    {/* Views Section */}
+                    <div className="space-y-1.5">
+                        <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Views</span>
+                        
+                        <button
+                            onClick={() => {
+                                setSelectedView("dashboard");
+                                setSelectedCategory(null);
+                                setMobileSidebarOpen(false);
+                            }}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                selectedView === "dashboard" && !selectedCategory
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                            )}
+                        >
+                            <LayoutGrid className="w-4.5 h-4.5 shrink-0" />
+                            <span>Dashboard</span>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setSelectedView("favorites");
+                                setSelectedCategory(null);
+                                setMobileSidebarOpen(false);
+                            }}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                selectedView === "favorites"
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                            )}
+                        >
+                            <Heart className="w-4.5 h-4.5 shrink-0" />
+                            <span>Favorites</span>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setSelectedView("recent");
+                                setSelectedCategory(null);
+                                setMobileSidebarOpen(false);
+                            }}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                selectedView === "recent"
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                            )}
+                        >
+                            <Clock className="w-4.5 h-4.5 shrink-0" />
+                            <span>Recents</span>
+                        </button>
+                    </div>
+
+                    {/* Categories Section */}
+                    <div className="space-y-1.5">
+                        <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Categories</span>
+                        
+                        <button
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setMobileSidebarOpen(false);
+                            }}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300",
+                                selectedCategory === null && selectedView === "dashboard"
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                            )}
+                        >
+                            <Compass className="w-4 h-4 shrink-0" />
+                            <span>All Categories</span>
+                        </button>
+
+                        {orderedCategories.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => {
+                                    setSelectedCategory(cat.id);
+                                    setSelectedView("dashboard");
+                                    setMobileSidebarOpen(false);
+                                }}
+                                draggable
+                                onDragStart={() => setDraggingCategoryId(cat.id)}
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={() => {
+                                    if (!draggingCategoryId) return;
+                                    moveCategory(draggingCategoryId, cat.id);
+                                    setDraggingCategoryId(null);
+                                }}
+                                onDragEnd={() => setDraggingCategoryId(null)}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 select-none text-left",
+                                    selectedCategory === cat.id
+                                        ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                        : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                )}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
+                                <span className="truncate flex-1">{cat.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Admin Actions */}
+                    {isAdmin && (
+                        <div className="space-y-1.5">
+                            <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Admin</span>
+                            <Link
+                                href="/admin"
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent transition-all duration-300"
+                                onClick={() => setMobileSidebarOpen(false)}
+                            >
+                                <Shield className="w-4.5 h-4.5 shrink-0" />
+                                <span>Admin Portal</span>
+                            </Link>
+                            <Link
+                                href="/admin/settings"
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent transition-all duration-300"
+                                onClick={() => setMobileSidebarOpen(false)}
+                            >
+                                <Settings className="w-4.5 h-4.5 shrink-0" />
+                                <span>Portal Settings</span>
+                            </Link>
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom Profile / User Panel */}
+                <div className="p-4 border-t border-black/5 dark:border-white/5 space-y-3 shrink-0">
+                    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-black/5 dark:bg-white/5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            {user?.photoURL ? (
+                                <Image
+                                    src={user.photoURL}
+                                    alt="User Avatar"
+                                    width={32}
+                                    height={32}
+                                    className="w-8 h-8 rounded-full border border-black/10 dark:border-white/10"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-teal-500/10">
+                                    {user?.email ? user.email.slice(0, 2) : "U"}
+                                </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-semibold truncate text-foreground/90 leading-tight">
+                                    {user?.displayName || (user?.isAnonymous ? "Guest Session" : user?.email?.split("@")[0])}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+                                    {user?.isAnonymous ? "Temporary User" : (isAdmin ? "Administrator" : "Standard User")}
+                                </span>
+                            </div>
+                        </div>
+                        <ThemeToggle />
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => signOut()} 
+                        className="w-full flex items-center justify-center gap-2 border border-black/5 dark:border-white/5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 text-xs py-2 transition-all duration-300 rounded-lg"
+                    >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                    </Button>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen flex w-full">
+            {/* Desktop Sidebar (Left Panel) */}
+            <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-black/5 dark:border-white/5 h-screen sticky top-0 z-20 shrink-0">
+                {renderSidebarContent()}
+            </aside>
+
+            {/* Mobile Sidebar (Collapsible Drawer Overlay) */}
+            {mobileSidebarOpen && (
+                <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-300">
+                    {/* Backdrop click close */}
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
+                    
+                    {/* Sidebar Drawer panel */}
+                    <aside className="relative w-64 glass-panel border-r border-black/5 dark:border-white/5 h-full flex flex-col p-0 text-card-foreground shadow-2xl animate-in slide-in-from-left duration-300">
+                        {/* Close button inside panel */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-2 top-2 h-8 w-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                            onClick={() => setMobileSidebarOpen(false)}
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                        {renderSidebarContent()}
+                    </aside>
+                </div>
+            )}
+
+            {/* Main Content Area */}
+            <main className="flex-1 flex flex-col min-w-0">
+                {/* Top Nav Header */}
+                <header className="glass-panel py-3 px-6 flex items-center justify-between border-b border-black/5 dark:border-white/5 sticky top-0 z-10 w-full backdrop-blur-md shrink-0">
+                    <div className="flex items-center">
+                        {/* Hamburger mobile toggle */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="md:hidden h-9 w-9 text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg mr-2"
+                            onClick={() => setMobileSidebarOpen(true)}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </Button>
+                        
+                        {/* Breadcrumbs pathway */}
+                        <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground font-medium select-none font-outfit uppercase tracking-wider">
+                            <span>Portal</span>
+                            <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                            <span className="text-foreground">{selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : selectedView}</span>
+                        </div>
+                    </div>
+
+                    {/* Search bar input block */}
+                    <div className="relative w-full max-w-sm md:max-w-md group">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-teal-500" />
                         <Input
                             type="search"
                             placeholder="Search apps..."
-                            className="pl-8 bg-background/30 border-black/10 dark:border-white/10 focus:bg-background/80 focus:border-teal-500/50 dark:focus:border-teal-500/40 focus:ring-1 focus:ring-teal-500/30 transition-all duration-300 rounded-lg shadow-sm"
+                            className="pl-9 h-9 bg-background/30 border-black/10 dark:border-white/10 focus:bg-background/80 focus:border-teal-500/50 dark:focus:border-teal-500/40 focus:ring-1 focus:ring-teal-500/30 transition-all duration-300 rounded-lg shadow-sm w-full"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    {isAdmin && (
-                        <Button variant="outline" asChild className="border-border/60 hover:bg-accent rounded-lg transition-all duration-300">
-                            <Link href="/admin">Go to Admin</Link>
-                        </Button>
-                    )}
-                    <ThemeToggle />
-                    <Button variant="outline" onClick={() => signOut()} className="border-border/60 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-all duration-300">Logout</Button>
-                </div>
-            </div>
+                </header>
 
-            {/* Categories */}
-            <div className="flex flex-wrap gap-2">
-                <Badge
-                    variant={selectedCategory === null ? "default" : "outline"}
-                    className={cn(
-                        "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 select-none",
-                        selectedCategory === null 
-                            ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
-                            : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
-                    )}
-                    onClick={() => setSelectedCategory(null)}
-                >
-                    All
-                </Badge>
-                {orderedCategories.map(cat => (
-                    <Badge
-                        key={cat.id}
-                        variant={selectedCategory === cat.id ? "default" : "outline"}
-                        className={cn(
-                            "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 select-none",
-                            selectedCategory === cat.id 
-                                ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
-                                : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
-                        )}
-                        onClick={() => setSelectedCategory(cat.id)}
-                        draggable
-                        onDragStart={() => setDraggingCategoryId(cat.id)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={() => {
-                            if (!draggingCategoryId) return;
-                            moveCategory(draggingCategoryId, cat.id);
-                            setDraggingCategoryId(null);
-                        }}
-                        onDragEnd={() => setDraggingCategoryId(null)}
-                    >
-                        {cat.name}
-                    </Badge>
-                ))}
-            </div>
-
-            {/* Favorites Section */}
-            {favoriteApps.length > 0 && (
-                <section className="space-y-4">
-                    <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">Favorites</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {favoriteApps.map(app => (
-                            <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={(id, isFav) => {
-                                const next = new Set(favorites);
-                                if (isFav) next.add(id); else next.delete(id);
-                                setFavorites(next);
-                            }} />
+                {/* Dashboard grid panel wrapper */}
+                <div className="p-6 space-y-8 max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar">
+                    {/* Mobile Category Chips Row */}
+                    <div className="flex md:hidden overflow-x-auto gap-2 pb-2 custom-scrollbar shrink-0 select-none">
+                        <Badge
+                            variant={selectedCategory === null ? "default" : "outline"}
+                            className={cn(
+                                "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap",
+                                selectedCategory === null 
+                                    ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
+                                    : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
+                            )}
+                            onClick={() => { setSelectedCategory(null); setSelectedView("dashboard"); }}
+                        >
+                            All Categories
+                        </Badge>
+                        {orderedCategories.map(cat => (
+                            <Badge
+                                key={cat.id}
+                                variant={selectedCategory === cat.id ? "default" : "outline"}
+                                className={cn(
+                                    "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap",
+                                    selectedCategory === cat.id 
+                                        ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
+                                        : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
+                                )}
+                                onClick={() => { setSelectedCategory(cat.id); setSelectedView("dashboard"); }}
+                            >
+                                {cat.name}
+                            </Badge>
                         ))}
                     </div>
-                </section>
-            )}
 
-            {/* Recent Section */}
-            {recentApps.length > 0 && (
-                <section className="space-y-4">
-                    <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">Recent</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {recentApps.map(app => (
-                            <AppCard
-                                key={app.id}
-                                app={app}
-                                isFavorite={favorites.has(app.id)}
-                                onToggleFavorite={(id, isFav) => {
-                                    const next = new Set(favorites);
-                                    if (isFav) next.add(id); else next.delete(id);
-                                    setFavorites(next);
-                                }}
-                            />
-                        ))}
-                    </div>
-                </section>
-            )}
+                    {/* Active View Router */}
+                    {selectedView === "favorites" && (
+                        <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-2xl font-bold tracking-tight text-foreground/90 font-outfit">Favorites</h2>
+                                <p className="text-xs text-muted-foreground">Your pinned applications for quick access.</p>
+                            </div>
+                            {favoriteApps.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {favoriteApps.map(app => (
+                                        <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={(id, isFav) => {
+                                            const next = new Set(favorites);
+                                            if (isFav) next.add(id); else next.delete(id);
+                                            setFavorites(next);
+                                        }} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground py-12 text-center glass-panel rounded-xl border-dashed">You haven't added any favorites yet. Click the heart icon on any app to pin it here.</p>
+                            )}
+                        </section>
+                    )}
 
-            {/* Main Grid */}
-            <section className="space-y-4">
-                <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">All Apps</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {filteredApps.map(app => (
-                        <AppCard
-                            key={app.id}
-                            app={app}
-                            isFavorite={favorites.has(app.id)}
-                            onToggleFavorite={(id, isFav) => {
-                                const next = new Set(favorites);
-                                if (isFav) next.add(id); else next.delete(id);
-                                setFavorites(next);
-                            }}
-                        />
-                    ))}
-                    {filteredApps.length === 0 && (
-                        <p className="text-muted-foreground col-span-full py-8 text-center glass-panel rounded-xl border-dashed">No apps found matching your criteria.</p>
+                    {selectedView === "recent" && (
+                        <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-2xl font-bold tracking-tight text-foreground/90 font-outfit">Recently Opened</h2>
+                                <p className="text-xs text-muted-foreground">The last 10 applications you launched.</p>
+                            </div>
+                            {recentApps.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {recentApps.map(app => (
+                                        <AppCard
+                                            key={app.id}
+                                            app={app}
+                                            isFavorite={favorites.has(app.id)}
+                                            onToggleFavorite={(id, isFav) => {
+                                                const next = new Set(favorites);
+                                                if (isFav) next.add(id); else next.delete(id);
+                                                setFavorites(next);
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground py-12 text-center glass-panel rounded-xl border-dashed">No recently launched apps found. Launch an app to see it here.</p>
+                            )}
+                        </section>
+                    )}
+
+                    {selectedView === "dashboard" && (
+                        <div className="space-y-8">
+                            {/* Selected Category View vs Full Dashboard */}
+                            {selectedCategory ? (
+                                <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <div className="flex flex-col gap-1">
+                                        <h2 className="text-2xl font-bold tracking-tight text-foreground/90 font-outfit">
+                                            {categories.find(c => c.id === selectedCategory)?.name}
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground">Applications under this category.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                        {filteredApps.map(app => (
+                                            <AppCard
+                                                key={app.id}
+                                                app={app}
+                                                isFavorite={favorites.has(app.id)}
+                                                onToggleFavorite={(id, isFav) => {
+                                                    const next = new Set(favorites);
+                                                    if (isFav) next.add(id); else next.delete(id);
+                                                    setFavorites(next);
+                                                }}
+                                            />
+                                        ))}
+                                        {filteredApps.length === 0 && (
+                                            <p className="text-muted-foreground col-span-full py-12 text-center glass-panel rounded-xl border-dashed">No apps found matching your criteria in this category.</p>
+                                        )}
+                                    </div>
+                                </section>
+                            ) : (
+                                <>
+                                    {/* Favorites Subsection */}
+                                    {favoriteApps.length > 0 && (
+                                        <section className="space-y-4">
+                                            <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">Favorites</h2>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                                {favoriteApps.map(app => (
+                                                    <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={(id, isFav) => {
+                                                        const next = new Set(favorites);
+                                                        if (isFav) next.add(id); else next.delete(id);
+                                                        setFavorites(next);
+                                                    }} />
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
+
+                                    {/* Recent Subsection */}
+                                    {recentApps.length > 0 && (
+                                        <section className="space-y-4">
+                                            <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">Recent</h2>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                                {recentApps.map(app => (
+                                                    <AppCard
+                                                        key={app.id}
+                                                        app={app}
+                                                        isFavorite={favorites.has(app.id)}
+                                                        onToggleFavorite={(id, isFav) => {
+                                                            const next = new Set(favorites);
+                                                            if (isFav) next.add(id); else next.delete(id);
+                                                            setFavorites(next);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
+
+                                    {/* All Apps Subsection */}
+                                    <section className="space-y-4">
+                                        <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">All Apps</h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                            {filteredApps.map(app => (
+                                                <AppCard
+                                                    key={app.id}
+                                                    app={app}
+                                                    isFavorite={favorites.has(app.id)}
+                                                    onToggleFavorite={(id, isFav) => {
+                                                        const next = new Set(favorites);
+                                                        if (isFav) next.add(id); else next.delete(id);
+                                                        setFavorites(next);
+                                                    }}
+                                                />
+                                            ))}
+                                            {filteredApps.length === 0 && (
+                                                <p className="text-muted-foreground col-span-full py-12 text-center glass-panel rounded-xl border-dashed">No apps found matching your search criteria.</p>
+                                            )}
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
-            </section>
+            </main>
         </div>
     );
 }
+
 
