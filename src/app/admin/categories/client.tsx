@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 
 export function CategoriesClient({ initialCategories }: { initialCategories: Category[] }) {
     const { user } = useAuth();
+    const [categories, setCategories] = useState<Category[]>(initialCategories);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [editingCat, setEditingCat] = useState<Category | null>(null);
@@ -34,13 +35,25 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
             const token = await user.getIdToken();
             const data = { name, sortOrder, isActive };
 
-            const result = editingCat
-                ? await updateCategory(token, editingCat.id, data)
-                : await createCategory(token, data);
-
-            if (!result.success) {
-                setErrorMessage(result.message || "Failed to save category.");
-                return;
+            if (editingCat) {
+                const result = await updateCategory(token, editingCat.id, data);
+                if (!result.success) {
+                    setErrorMessage(result.message || "Failed to save category.");
+                    return;
+                }
+                setCategories((current) =>
+                    current.map((cat) => (cat.id === editingCat.id ? { ...cat, ...data } : cat))
+                );
+            } else {
+                const result = await createCategory(token, data);
+                if (!result.success || !result.id) {
+                    setErrorMessage(result.message || "Failed to save category.");
+                    return;
+                }
+                setCategories((current) => [
+                    ...current,
+                    { id: result.id, ...data }
+                ]);
             }
 
             setIsOpen(false);
@@ -54,13 +67,23 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure?")) return;
+        if (!confirm("Are you sure? This will reassign any apps in this category to 'uncategorized'.")) return;
         if (!user) return;
+        setLoading(true);
+        setErrorMessage(null);
         try {
             const token = await user.getIdToken();
-            await deleteCategory(token, id);
+            const result = await deleteCategory(token, id);
+            if (result.success) {
+                setCategories((current) => current.filter((cat) => cat.id !== id));
+            } else {
+                setErrorMessage(result.message || "Failed to delete category.");
+            }
         } catch (error) {
             console.error(error);
+            setErrorMessage("Unexpected error occurred while deleting category.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -120,33 +143,48 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                 <p className="text-sm text-red-500">{errorMessage}</p>
             )}
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Sort</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {initialCategories.map((cat) => (
-                        <TableRow key={cat.id}>
-                            <TableCell>{cat.sortOrder}</TableCell>
-                            <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell>{cat.isActive ? "Active" : "Inactive"}</TableCell>
-                            <TableCell className="text-right space-x-2">
-                                <Button variant="ghost" size="icon" onClick={() => openEdit(cat)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(cat.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </TableCell>
+            <div className="relative">
+                {loading && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded">
+                        <Loader2 className="animate-spin text-primary h-8 w-8" />
+                    </div>
+                )}
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Sort</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {categories.map((cat) => (
+                            <TableRow key={cat.id}>
+                                <TableCell>{cat.sortOrder}</TableCell>
+                                <TableCell className="font-medium">{cat.name}</TableCell>
+                                <TableCell>{cat.isActive ? "Active" : "Inactive"}</TableCell>
+                                <TableCell className="text-right space-x-2">
+                                    <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} disabled={loading}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(cat.id)} disabled={loading}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                        {categories.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                                    No categories found.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }
+
