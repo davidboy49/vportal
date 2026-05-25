@@ -222,7 +222,7 @@ export function DashboardClient({
                             className="w-8 h-8 rounded-md object-contain border border-black/5 dark:border-white/5 p-1 bg-white/50 dark:bg-black/20"
                         />
                     )}
-                    <span className="text-xl font-black tracking-tight bg-gradient-to-r from-teal-400 via-sky-400 to-indigo-500 bg-clip-text text-transparent font-outfit select-none">
+                    <span className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-white font-outfit select-none">
                         {globalSettings?.portalName || "VPortal"}
                     </span>
                 </div>
@@ -242,7 +242,7 @@ export function DashboardClient({
                             className={cn(
                                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
                                 selectedView === "dashboard" && !selectedCategory
-                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
                                     : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
                             )}
                         >
@@ -259,7 +259,7 @@ export function DashboardClient({
                             className={cn(
                                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
                                 selectedView === "favorites"
-                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
                                     : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
                             )}
                         >
@@ -276,7 +276,7 @@ export function DashboardClient({
                             className={cn(
                                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
                                 selectedView === "recent"
-                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
                                     : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
                             )}
                         >
@@ -297,7 +297,7 @@ export function DashboardClient({
                             className={cn(
                                 "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300",
                                 selectedCategory === null && selectedView === "dashboard"
-                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
                                     : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
                             )}
                         >
@@ -325,7 +325,7 @@ export function DashboardClient({
                                 className={cn(
                                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 select-none text-left",
                                     selectedCategory === cat.id
-                                        ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/15"
+                                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
                                         : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
                                 )}
                             >
@@ -372,7 +372,7 @@ export function DashboardClient({
                                     className="w-8 h-8 rounded-full border border-black/10 dark:border-white/10"
                                 />
                             ) : (
-                                <div className="w-8 h-8 rounded-full bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-teal-500/10">
+                                <div className="w-8 h-8 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-blue-500/10">
                                     {user?.email ? user.email.slice(0, 2) : "U"}
                                 </div>
                             )}
@@ -446,7 +446,7 @@ export function DashboardClient({
                         </Button>
                         
                         {/* Breadcrumbs pathway */}
-                        <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground font-medium select-none font-outfit uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium select-none font-outfit uppercase tracking-wider">
                             <span>Portal</span>
                             <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                             <span className="text-foreground">{selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : selectedView}</span>
@@ -455,11 +455,11 @@ export function DashboardClient({
 
                     {/* Search bar input block */}
                     <div className="relative w-full max-w-sm md:max-w-md group">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-teal-500" />
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-blue-500" />
                         <Input
                             type="search"
                             placeholder="Search apps..."
-                            className="pl-9 h-9 bg-background/30 border-black/10 dark:border-white/10 focus:bg-background/80 focus:border-teal-500/50 dark:focus:border-teal-500/40 focus:ring-1 focus:ring-teal-500/30 transition-all duration-300 rounded-lg shadow-sm w-full"
+                            className="pl-9 h-9 bg-background/30 border-black/10 dark:border-white/10 focus:bg-background/80 focus:border-blue-500/50 dark:focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/30 transition-all duration-300 rounded-lg shadow-sm w-full"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -475,7 +475,7 @@ export function DashboardClient({
                             className={cn(
                                 "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap",
                                 selectedCategory === null 
-                                    ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
+                                    ? "bg-blue-600 dark:bg-blue-500 text-white shadow-md shadow-blue-500/20" 
                                     : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
                             )}
                             onClick={() => { setSelectedCategory(null); setSelectedView("dashboard"); }}
@@ -489,7 +489,7 @@ export function DashboardClient({
                                 className={cn(
                                     "cursor-pointer px-3 py-1 text-xs font-semibold rounded-full transition-all duration-300 whitespace-nowrap",
                                     selectedCategory === cat.id 
-                                        ? "bg-teal-600 dark:bg-teal-500 text-white shadow-md shadow-teal-500/20" 
+                                        ? "bg-blue-600 dark:bg-blue-500 text-white shadow-md shadow-blue-500/20" 
                                         : "bg-white/40 dark:bg-white/5 border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10 text-foreground"
                                 )}
                                 onClick={() => { setSelectedCategory(cat.id); setSelectedView("dashboard"); }}

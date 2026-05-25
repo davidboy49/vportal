@@ -74,44 +74,21 @@
 @layer base {
   body {
     @apply bg-background text-foreground transition-colors duration-500;
-    background-color: #f6f8fb;
-    background-image:
-      radial-gradient(ellipse at 15% 20%, rgba(13, 148, 136, 0.08), transparent 60%),
-      radial-gradient(ellipse at 88% 12%, rgba(56, 189, 248, 0.08), transparent 58%),
-      radial-gradient(ellipse at 50% 90%, rgba(99, 102, 241, 0.06), transparent 65%);
-    background-size: 160% 160%;
-    animation: antigravity-drift 14s ease-in-out infinite alternate;
+    background-color: #f8fafc;
+    background-image: radial-gradient(circle at 80% 10%, rgba(37, 99, 235, 0.02), transparent 50%);
   }
 
   body::before {
-    content: "";
-    position: fixed;
-    inset: -25%;
-    pointer-events: none;
-    z-index: -1;
-    background:
-      linear-gradient(135deg, rgba(20, 184, 166, 0.04), transparent 50%),
-      radial-gradient(ellipse at 25% 35%, rgba(56, 189, 248, 0.06), transparent 45%),
-      radial-gradient(ellipse at 72% 68%, rgba(99, 102, 241, 0.05), transparent 48%);
-    filter: blur(5px);
-    transform-origin: center;
-    animation: antigravity-float 16s ease-in-out infinite;
-    transition: background 0.5s ease;
+    display: none;
   }
 
   .dark body {
-    background-color: #030712;
-    background-image:
-      radial-gradient(ellipse at 15% 20%, rgba(6, 182, 212, 0.12), transparent 55%),
-      radial-gradient(ellipse at 88% 12%, rgba(124, 58, 237, 0.10), transparent 50%),
-      radial-gradient(ellipse at 50% 90%, rgba(99, 102, 241, 0.08), transparent 60%);
+    background-color: #090d16;
+    background-image: radial-gradient(circle at 80% 10%, rgba(37, 99, 235, 0.04), transparent 50%);
   }
 
   .dark body::before {
-    background:
-      linear-gradient(135deg, rgba(6, 182, 212, 0.04), transparent 50%),
-      radial-gradient(ellipse at 25% 35%, rgba(139, 92, 246, 0.05), transparent 45%),
-      radial-gradient(ellipse at 72% 68%, rgba(99, 102, 241, 0.04), transparent 48%);
+    display: none;
   }
 }
 

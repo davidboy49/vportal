@@ -17,34 +17,6 @@ interface AppCardProps {
     onToggleFavorite: (id: string, isFav: boolean) => void;
 }
 
-const categoryGlowStyles: Record<string, { border: string; glow: string; badge: string }> = {
-    productivity: {
-        border: "hover:border-teal-500/50 dark:hover:border-teal-500/30",
-        glow: "hover:shadow-[0_12px_40px_-8px_rgba(20,184,166,0.18)] dark:hover:shadow-[0_12px_40px_-8px_rgba(20,184,166,0.3)]",
-        badge: "bg-teal-500/5 text-teal-600 dark:text-teal-400 border-teal-500/20"
-    },
-    development: {
-        border: "hover:border-violet-500/50 dark:hover:border-violet-500/30",
-        glow: "hover:shadow-[0_12px_40px_-8px_rgba(139,92,246,0.18)] dark:hover:shadow-[0_12px_40px_-8px_rgba(139,92,246,0.3)]",
-        badge: "bg-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20"
-    },
-    finance: {
-        border: "hover:border-amber-500/50 dark:hover:border-amber-500/30",
-        glow: "hover:shadow-[0_12px_40px_-8px_rgba(245,158,11,0.15)] dark:hover:shadow-[0_12px_40px_-8px_rgba(245,158,11,0.25)]",
-        badge: "bg-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20"
-    },
-    hr: {
-        border: "hover:border-rose-500/50 dark:hover:border-rose-500/30",
-        glow: "hover:shadow-[0_12px_40px_-8px_rgba(244,63,94,0.18)] dark:hover:shadow-[0_12px_40px_-8px_rgba(244,63,94,0.3)]",
-        badge: "bg-rose-500/5 text-rose-600 dark:text-rose-400 border-rose-500/20"
-    },
-    uncategorized: {
-        border: "hover:border-slate-500/50 dark:hover:border-slate-500/30",
-        glow: "hover:shadow-[0_12px_40px_-8px_rgba(100,116,139,0.15)] dark:hover:shadow-[0_12px_40px_-8px_rgba(100,116,139,0.2)]",
-        badge: "bg-slate-500/5 text-slate-600 dark:text-slate-400 border-slate-500/20"
-    }
-};
-
 export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -77,13 +49,10 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
         window.open(app.url, "_blank");
     };
 
-    const style = categoryGlowStyles[app.categoryId] || categoryGlowStyles.uncategorized;
-
     return (
         <Card className={cn(
             "glass-card flex h-full flex-col transform-gpu transition-all duration-300 ease-out group hover:-translate-y-1.5 hover:scale-[1.02] border-black/5 dark:border-white/5",
-            style.border,
-            style.glow
+            "hover:border-blue-500/30 hover:shadow-[0_12px_24px_-8px_rgba(100,116,139,0.15)] dark:hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.4)]"
         )}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -118,7 +87,7 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
                         <Badge
                             key={tag}
                             variant="outline"
-                            className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium tracking-wide transition-all duration-300", style.badge)}
+                            className="text-[10px] px-2 py-0.5 rounded-full font-medium tracking-wide transition-all duration-300 bg-slate-500/5 border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-400"
                         >
                             {tag}
                         </Badge>
@@ -127,7 +96,7 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
             </CardContent>
             <CardFooter className="pt-0">
                 <Button
-                    className="w-full gap-2 transition-all duration-300 bg-teal-600/90 dark:bg-teal-500/95 hover:bg-teal-600 dark:hover:bg-teal-500 shadow-md group-hover:bg-gradient-to-r group-hover:from-teal-500 group-hover:to-blue-600 group-hover:text-white"
+                    className="w-full gap-2 transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                     onClick={handleLaunch}
                 >
                     Open
