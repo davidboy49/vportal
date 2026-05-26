@@ -110,7 +110,13 @@ Guidelines:
     return NextResponse.json(data);
   } catch (error: unknown) {
     console.error("Chat API error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Attempt to extract the deep cause of the fetch failure (like ENOTFOUND, timeout, etc.)
+    if (error instanceof Error && (error as any).cause) {
+      const cause = (error as any).cause;
+      errorMessage += ` | Cause: ${cause.message || cause.code || String(cause)}`;
+    }
     
     // Return the exact network error to the chat widget for debugging
     return NextResponse.json({
