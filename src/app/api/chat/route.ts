@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     // If Gemini API Key is missing, guide the developer/user gracefully rather than crashing.
     if (!geminiApiKey) {
@@ -56,9 +57,9 @@ Guidelines:
         parts: [{ text: msg.content }]
       }));
 
-    // Call Google Gemini API (using gemini-1.5-flash)
+    // Call Google Gemini API (defaulting to gemini-2.5-flash)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: {
