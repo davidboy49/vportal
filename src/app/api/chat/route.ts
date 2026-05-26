@@ -13,18 +13,17 @@ export async function POST(req: Request) {
       );
     }
 
-    const hfToken = process.env.HF_TOKEN || process.env.NEXT_PUBLIC_HF_TOKEN;
-    const hfModel = process.env.HF_MODEL || "meta-llama/Llama-3.3-70B-Instruct";
+    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-    // If HF Token is missing, guide the developer/user gracefully rather than crashing.
-    if (!hfToken) {
-      console.warn("Hugging Face API token (HF_TOKEN) is not set in environment variables.");
+    // If Gemini API Key is missing, guide the developer/user gracefully rather than crashing.
+    if (!geminiApiKey) {
+      console.warn("Google Gemini API key (GEMINI_API_KEY) is not set in environment variables.");
       return NextResponse.json({
         choices: [
           {
             message: {
               role: "assistant",
-              content: "👋 Hello! I am the VPortal Assistant. To enable my AI-powered capabilities, please set the `HF_TOKEN` environment variable in your `.env.local` file with your Hugging Face API key."
+              content: "👋 Hello! I am the VPortal Assistant. To enable my AI-powered capabilities, please set the `GEMINI_API_KEY` environment variable in your `.env.local` file with your Google Gemini API key."
             }
           }
         ]
@@ -32,9 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Inject system context to guide the assistant
-    const systemPrompt = {
-      role: "system",
-      content: `You are the official VPortal Virtual Assistant, a friendly and helpful AI helper for VPortal.
+    const systemPrompt = `You are the official VPortal Virtual Assistant, a friendly and helpful AI helper for VPortal.
 VPortal is a centralized internal company dashboard for discovering, launching, and managing company apps (like Jira, Slack, GitHub, or custom internal tools).
 
 Guidelines:
@@ -49,26 +46,33 @@ Guidelines:
    - Favoriting apps (click the heart icon) for quick access.
    - Admin features for managing apps and categories (for users with Admin rights).
 5. Avoid answering questions completely unrelated to technology, business, or the portal if possible, or gently guide them back to VPortal.
-6. Keep your answers formatting clean (use bullet points and bold text where appropriate).`
-    };
+6. Keep your answers formatting clean (use bullet points and bold text where appropriate).`;
 
-    // Format messages list (ensuring system prompt is first)
-    const formattedMessages = [systemPrompt, ...messages];
+    // Map chat messages to Gemini contents structure (filtering for user/assistant roles)
+    const contents = messages
+      .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
+      .map((msg: any) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }]
+      }));
 
-    // Call Hugging Face Inference API
+    // Call Google Gemini API (using gemini-1.5-flash)
     const response = await fetch(
-      `https://api-inference.huggingface.co/models/${hfModel}/v1/chat/completions`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${hfToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: hfModel,
-          messages: formattedMessages,
-          max_tokens: 800,
-          temperature: 0.7,
+          contents: contents,
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800,
+          }
         }),
         // Add a timeout to prevent hanging forever
         signal: AbortSignal.timeout(15000),
@@ -77,29 +81,14 @@ Guidelines:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Hugging Face API error (Status ${response.status}):`, errorText);
+      console.error(`Google Gemini API error (Status ${response.status}):`, errorText);
 
-      // Handle loading/503 state gracefully
-      if (response.status === 503) {
-        return NextResponse.json({
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: "💤 The Hugging Face model is currently loading or warming up. Please try sending your message again in a few seconds."
-              }
-            }
-          ]
-        });
-      }
-
-      // Return the exact error to the chat widget so we can see what is failing on Vercel
       return NextResponse.json({
         choices: [
           {
             message: {
               role: "assistant",
-              content: `⚠️ Hugging Face API Error (Status ${response.status}): ${errorText}`
+              content: `⚠️ Google Gemini API Error (Status ${response.status}): ${errorText}`
             }
           }
         ]
@@ -107,24 +96,43 @@ Guidelines:
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error: unknown) {
-    console.error("Chat API error:", error);
-    let errorMessage = error instanceof Error ? error.message : String(error);
-    
-    // Attempt to extract the deep cause of the fetch failure (like ENOTFOUND, timeout, etc.)
-    if (error instanceof Error && (error as any).cause) {
-      const cause = (error as any).cause;
-      errorMessage += ` | Cause: ${cause.message || cause.code || String(cause)}`;
+
+    if (data.error) {
+      throw new Error(data.error.message || JSON.stringify(data.error));
     }
-    
-    // Return the exact network error to the chat widget for debugging
+
+    const replyContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // Map back to format expected by ChatWidget frontend
     return NextResponse.json({
       choices: [
         {
           message: {
             role: "assistant",
-            content: `⚠️ Network Error (Catch Block): ${errorMessage}`
+            content: replyContent
+          }
+        }
+      ]
+    });
+  } catch (error: unknown) {
+    console.error("Chat API error:", error);
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Attempt to extract the deep cause of the fetch failure
+    if (error instanceof Error && (error as any).cause) {
+      const cause = (error as any).cause;
+      errorMessage += ` | Cause: ${cause.message || cause.code || String(cause)}`;
+    }
+    
+    // Fallback to local response in case of network timeouts or DNS resolution failures
+    // But append a tiny notice so the developer knows there was a network issue
+    console.warn("Gemini API call failed, using fallback responder:", errorMessage);
+    return NextResponse.json({
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: getLocalFallbackResponse(parsedMessages)
           }
         }
       ]
@@ -146,5 +154,5 @@ function getLocalFallbackResponse(messages: { role: string; content: string }[])
   if (query.includes("apps") || query.includes("categories") || query.includes("hosted")) {
     return "VPortal hosts productivity tools like Jira and Slack, development tools like GitHub, and various financial or HR tools. Admins can add and manage these applications.";
   }
-  return "👋 Hi! I am the VPortal Assistant. I am responding in local demo mode because the Hugging Face API is currently offline or unreachable. Ask me about VPortal, login options, or hosted apps!";
+  return "👋 Hi! I am the VPortal Assistant. I am responding in local demo mode because the Google Gemini API is currently offline or unreachable. Ask me about VPortal, login options, or hosted apps!";
 }
