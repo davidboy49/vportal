@@ -110,14 +110,15 @@ Guidelines:
     return NextResponse.json(data);
   } catch (error: unknown) {
     console.error("Chat API error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     
-    // Fallback to local response in case of network timeouts or DNS resolution failures
+    // Return the exact network error to the chat widget for debugging
     return NextResponse.json({
       choices: [
         {
           message: {
             role: "assistant",
-            content: getLocalFallbackResponse(parsedMessages)
+            content: `⚠️ Network Error (Catch Block): ${errorMessage}`
           }
         }
       ]
