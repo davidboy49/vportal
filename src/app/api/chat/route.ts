@@ -93,14 +93,13 @@ Guidelines:
         });
       }
 
-      // Instead of failing with 500, fallback to local responses for offline/token-expired development testing
-      console.warn("Hugging Face API call failed. Falling back to local responder.");
+      // Return the exact error to the chat widget so we can see what is failing on Vercel
       return NextResponse.json({
         choices: [
           {
             message: {
               role: "assistant",
-              content: getLocalFallbackResponse(messages)
+              content: `⚠️ Hugging Face API Error (Status ${response.status}): ${errorText}`
             }
           }
         ]
