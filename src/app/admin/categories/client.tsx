@@ -10,10 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { createCategory, updateCategory, deleteCategory } from "@/actions/categories";
-import { Loader2, Plus, Pencil, Trash2, Download, Search, FolderOpen } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
-import { AdminHeader } from "@/components/admin-header";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -149,49 +148,48 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
 
     return (
         <div className="space-y-6">
-            <AdminHeader 
-                title="Categories"
-                description="Organize and sort application groups."
-                icon={FolderOpen}
-                actions={
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={handleExport} className="flex items-center gap-2 shadow-sm">
-                            <Download className="h-4 w-4" /> Export
-                        </Button>
-                        <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
-                            <DialogTrigger asChild>
-                                <Button className="shadow-sm"><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>{editingCat ? "Edit Category" : "New Category"}</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Name</Label>
-                                        <Input value={name} onChange={e => setName(e.target.value)} required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Sort Order</Label>
-                                        <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Switch checked={isActive} onCheckedChange={setIsActive} />
-                                        <Label>Active</Label>
-                                    </div>
-                                    {errorMessage && (
-                                        <p className="text-sm text-red-500">{errorMessage}</p>
-                                    )}
-                                    <Button type="submit" className="w-full" disabled={loading}>
-                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Save
-                                    </Button>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                }
-            />
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold">Categories</h2>
+                    <p className="text-sm text-muted-foreground">Organize and sort application groups.</p>
+                </div>
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
+                        <Download className="h-4 w-4" /> Export
+                    </Button>
+                    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
+                        <DialogTrigger asChild>
+                            <Button><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingCat ? "Edit Category" : "New Category"}</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Name</Label>
+                                    <Input value={name} onChange={e => setName(e.target.value)} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sort Order</Label>
+                                    <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch checked={isActive} onCheckedChange={setIsActive} />
+                                    <Label>Active</Label>
+                                </div>
+                                {errorMessage && (
+                                    <p className="text-sm text-red-500">{errorMessage}</p>
+                                )}
+                                <Button type="submit" className="w-full" disabled={loading}>
+                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                </Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            </div>
 
             {errorMessage && (
                 <p className="text-sm text-red-500">{errorMessage}</p>

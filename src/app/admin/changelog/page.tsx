@@ -8,9 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, Search, History } from "lucide-react";
+import { Loader2, Download, Search } from "lucide-react";
 import { exportToCsv } from "@/lib/export";
-import { AdminHeader } from "@/components/admin-header";
 
 type ChangeLog = {
     id: string;
@@ -114,18 +113,17 @@ export default function AdminChangeLogsPage() {
 
     return (
         <div className="space-y-6">
-            <AdminHeader 
-                title="Admin Change Logs"
-                description="Recent admin actions across apps, categories, users, settings, and system tasks."
-                icon={History}
-                actions={
-                    !loading && logs.length > 0 ? (
-                        <Button variant="outline" onClick={handleExport} className="flex items-center gap-2 shadow-sm">
-                            <Download className="h-4 w-4" /> Export logs
-                        </Button>
-                    ) : null
-                }
-            />
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold">Admin Change Logs</h1>
+                    <p className="text-muted-foreground">Recent admin actions across apps, categories, users, settings, and system tasks.</p>
+                </div>
+                {!loading && logs.length > 0 && (
+                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2 self-start md:self-auto">
+                        <Download className="h-4 w-4" /> Export logs
+                    </Button>
+                )}
+            </div>
 
             {/* Filter Bar */}
             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-lg border border-black/5 dark:border-white/5">
