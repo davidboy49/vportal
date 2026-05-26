@@ -47,7 +47,7 @@ function renderFormattedMessage(content: string) {
         );
       } else if (matchText.startsWith("`") && matchText.endsWith("`")) {
         parts.push(
-          <code key={matchIndex} className="font-mono text-xs bg-zinc-200/80 dark:bg-zinc-800 px-1 py-0.5 rounded text-pink-600 dark:text-pink-400">
+          <code key={matchIndex} className="font-mono text-xs bg-zinc-200/80 dark:bg-zinc-800 px-1 py-0.5 rounded text-pink-650 dark:text-pink-400">
             {matchText.slice(1, -1)}
           </code>
         );
@@ -74,7 +74,7 @@ function renderFormattedMessage(content: string) {
       }
       const itemContent = trimmed.substring(2);
       listItems.push(
-        <li key={`li-${idx}`} className="ml-4 list-disc pl-1 mb-1 text-zinc-800 dark:text-zinc-200">
+        <li key={`li-${idx}`} className="ml-4 list-disc pl-1 mb-1 text-zinc-850 dark:text-zinc-200">
           {parseInlineMarkdown(itemContent)}
         </li>
       );
@@ -120,6 +120,7 @@ export function ChatWidget() {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasPromptedSetup, setHasPromptedSetup] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -227,12 +228,11 @@ export function ChatWidget() {
     handleSendMessage(inputValue);
   };
 
-  const handleClearChat = () => {
-    if (confirm("Are you sure you want to clear your chat history?")) {
-      setMessages([]);
-      sessionStorage.removeItem("vportal_chat_history");
-      setHasPromptedSetup(false);
-    }
+  const handleConfirmClear = () => {
+    setMessages([]);
+    sessionStorage.removeItem("vportal_chat_history");
+    setHasPromptedSetup(false);
+    setShowConfirmModal(false);
   };
 
   return (
@@ -243,25 +243,54 @@ export function ChatWidget() {
     >
       {/* Chat Window */}
       {isOpen && (
-        <div className="mb-4 flex h-[540px] w-[380px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-zinc-800/40 dark:bg-zinc-950/80 sm:w-[420px] animate-in slide-in-from-bottom-5 duration-300 ease-out">
+        <div className="relative mb-4 flex h-[540px] w-[380px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-zinc-800/40 dark:bg-zinc-950/80 sm:w-[420px] animate-in slide-in-from-bottom-5 duration-300 ease-out">
+          
+          {/* Custom Modern Confirm Modal */}
+          {showConfirmModal && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="mx-4 rounded-2xl border border-zinc-200 bg-white/95 p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900/95 w-[80%] max-w-[320px] text-center space-y-4 animate-in zoom-in-95 duration-200 backdrop-blur-md">
+                <div className="space-y-2">
+                  <h4 className="font-bold text-base text-zinc-900 dark:text-white">Clear Chat History?</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-450 leading-relaxed">
+                    This will permanently delete all messages in your current session.
+                  </p>
+                </div>
+                <div className="flex space-x-3 justify-center pt-1">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="rounded-xl border border-zinc-250/70 px-4 py-2 text-xs font-semibold text-zinc-650 hover:bg-zinc-50/50 dark:border-zinc-750 dark:text-zinc-300 dark:hover:bg-zinc-800/50 transition-all select-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmClear}
+                    className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-500 transition-all shadow-sm active:scale-95 select-none"
+                  >
+                    Clear History
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 px-4 py-4 text-white">
+          <div className="flex items-center justify-between bg-indigo-600 px-4 py-4 text-white dark:bg-indigo-700 shadow-sm">
             <div className="flex items-center space-x-3">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
                 <Bot className="h-5 w-5 text-white animate-pulse" />
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-indigo-600 bg-emerald-400"></span>
               </div>
               <div>
                 <h3 className="font-semibold text-base leading-tight">VPortal Assistant</h3>
-                <p className="text-[11px] text-white/90 font-medium">Powered by Google Gemini AI</p>
+                <p className="text-[11px] text-indigo-100 font-medium">Powered by Google Gemini AI</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-1">
               {messages.length > 0 && (
                 <button
-                  onClick={handleClearChat}
-                  className="rounded-lg p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => setShowConfirmModal(true)}
+                  className="rounded-lg p-1.5 text-indigo-100 transition-colors hover:bg-white/10 hover:text-white"
                   title="Clear chat"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -269,7 +298,7 @@ export function ChatWidget() {
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-1.5 text-indigo-100 transition-colors hover:bg-white/10 hover:text-white"
                 title="Close chat"
               >
                 <X className="h-4.5 w-4.5" />
@@ -296,7 +325,7 @@ export function ChatWidget() {
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(prompt)}
-                      className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3 text-left text-xs font-semibold text-zinc-650 transition-all hover:bg-indigo-50/60 hover:border-indigo-300 hover:text-indigo-650 dark:border-zinc-850/40 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 shadow-sm active:scale-[0.98]"
+                      className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3 text-left text-xs font-semibold text-zinc-650 transition-all hover:bg-indigo-50/60 hover:border-indigo-300 hover:text-indigo-600 dark:border-zinc-850/40 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 shadow-sm active:scale-[0.98]"
                     >
                       {prompt}
                     </button>
@@ -314,15 +343,15 @@ export function ChatWidget() {
                     >
                       <div className={`flex max-w-[88%] items-start space-x-2 ${isUser ? "flex-row-reverse space-x-reverse" : "flex-row"}`}>
                         {!isUser && (
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm animate-in zoom-in-50 duration-200">
                             🤖
                           </div>
                         )}
                         <div
                           className={`rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
                             isUser
-                              ? "bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white font-medium rounded-tr-none"
-                              : "bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-850 dark:text-zinc-100 rounded-tl-none border border-zinc-200/60 dark:border-zinc-800/40"
+                              ? "bg-indigo-600 text-white font-medium rounded-tr-none dark:bg-indigo-650"
+                              : "bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-855 dark:text-zinc-100 rounded-tl-none border border-zinc-200/60 dark:border-zinc-800/40"
                           }`}
                         >
                           <div className="select-text">
@@ -337,7 +366,7 @@ export function ChatWidget() {
                 {isLoading && (
                   <div className="flex w-full justify-start animate-in fade-in duration-200">
                     <div className="flex items-start space-x-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-855 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm">
                         🤖
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-zinc-100/90 dark:bg-zinc-900/90 px-4.5 py-3.5 border border-zinc-200/60 dark:border-zinc-800/40 shadow-sm">
@@ -378,7 +407,7 @@ export function ChatWidget() {
               <button
                 type="submit"
                 disabled={isLoading || !inputValue.trim()}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:bg-zinc-250 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:opacity-80 shrink-0"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-550 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:bg-zinc-250 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:opacity-80 shrink-0"
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -391,7 +420,7 @@ export function ChatWidget() {
       <button
         id="chat-fab-btn"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white shadow-lg transition-transform duration-300 hover:scale-107 hover:shadow-xl active:scale-95 focus:outline-none ring-4 ring-indigo-500/10 dark:ring-indigo-400/5"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform duration-300 hover:scale-107 hover:shadow-xl active:scale-95 focus:outline-none ring-4 ring-indigo-550/10 dark:ring-indigo-400/5 dark:bg-indigo-700"
         title="Open VPortal Support Chat"
       >
         <span className="relative flex h-full w-full items-center justify-center">
@@ -402,8 +431,8 @@ export function ChatWidget() {
               <MessageSquare className="h-6 w-6 transform-gpu transition-all duration-300 hover:rotate-6" />
               {messages.length === 0 && (
                 <span className="absolute top-0.5 right-0.5 flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-400 opacity-75"></span>
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-pink-500"></span>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-indigo-500"></span>
                 </span>
               )}
             </>
