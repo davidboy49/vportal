@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Category } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { createCategory, updateCategory, deleteCategory } from "@/actions/categories";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { exportToCsv } from "@/lib/export";
+
+const ITEMS_PER_PAGE = 10;
 
 export function CategoriesClient({ initialCategories }: { initialCategories: Category[] }) {
     const { user } = useAuth();
@@ -24,6 +28,11 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
     const [name, setName] = useState("");
     const [sortOrder, setSortOrder] = useState(0);
     const [isActive, setIsActive] = useState(true);
+
+    // Filters and Pagination State
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [currentPage, setCurrentPage] = useState(1);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,46 +111,114 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
         setIsActive(true);
     };
 
+    // Filters
+    const filteredCategories = useMemo(() => {
+        return categories.filter((cat) => {
+            const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === "ALL" ||
+                (statusFilter === "ACTIVE" && cat.isActive) ||
+                (statusFilter === "INACTIVE" && !cat.isActive);
+            return matchesSearch && matchesStatus;
+        });
+    }, [categories, searchTerm, statusFilter]);
+
+    // Reset pagination to 1 if filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredCategories.length / ITEMS_PER_PAGE));
+
+    const paginatedCategories = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredCategories.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredCategories, currentPage]);
+
+    // Export to Excel
+    const handleExport = () => {
+        const headers = ["ID", "Name", "Sort Order", "Status"];
+        const rows = filteredCategories.map(cat => [
+            cat.id,
+            cat.name,
+            cat.sortOrder.toString(),
+            cat.isActive ? "Active" : "Inactive"
+        ]);
+        exportToCsv(`categories_export_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Categories</h2>
-                <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
-                    <DialogTrigger asChild>
-                        <Button><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{editingCat ? "Edit Category" : "New Category"}</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Name</Label>
-                                <Input value={name} onChange={e => setName(e.target.value)} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Sort Order</Label>
-                                <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Switch checked={isActive} onCheckedChange={setIsActive} />
-                                <Label>Active</Label>
-                            </div>
-                            {errorMessage && (
-                                <p className="text-sm text-red-500">{errorMessage}</p>
-                            )}
-                            <Button type="submit" className="w-full" disabled={loading}>
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save
-                            </Button>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold">Categories</h2>
+                    <p className="text-sm text-muted-foreground">Organize and sort application groups.</p>
+                </div>
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
+                        <Download className="h-4 w-4" /> Export
+                    </Button>
+                    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
+                        <DialogTrigger asChild>
+                            <Button><Plus className="mr-2 h-4 w-4" /> Add Category</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingCat ? "Edit Category" : "New Category"}</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Name</Label>
+                                    <Input value={name} onChange={e => setName(e.target.value)} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sort Order</Label>
+                                    <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch checked={isActive} onCheckedChange={setIsActive} />
+                                    <Label>Active</Label>
+                                </div>
+                                {errorMessage && (
+                                    <p className="text-sm text-red-500">{errorMessage}</p>
+                                )}
+                                <Button type="submit" className="w-full" disabled={loading}>
+                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save
+                                </Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {errorMessage && (
                 <p className="text-sm text-red-500">{errorMessage}</p>
             )}
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border border-black/5 dark:border-white/5">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search by category name..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+                <div className="w-full sm:w-[180px]">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Status: All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Status</SelectItem>
+                            <SelectItem value="ACTIVE">Active</SelectItem>
+                            <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
             <div className="relative">
                 {loading && (
@@ -149,42 +226,77 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                         <Loader2 className="animate-spin text-primary h-8 w-8" />
                     </div>
                 )}
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Sort</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {categories.map((cat) => (
-                            <TableRow key={cat.id}>
-                                <TableCell>{cat.sortOrder}</TableCell>
-                                <TableCell className="font-medium">{cat.name}</TableCell>
-                                <TableCell>{cat.isActive ? "Active" : "Inactive"}</TableCell>
-                                <TableCell className="text-right space-x-2">
-                                    <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} disabled={loading}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(cat.id)} disabled={loading}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        {categories.length === 0 && (
+                <div className="rounded-lg border border-black/5 dark:border-white/5 overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                                    No categories found.
-                                </TableCell>
+                                <TableHead className="w-[100px]">Sort Order</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {paginatedCategories.map((cat) => (
+                                <TableRow key={cat.id} className="hover:bg-muted/30">
+                                    <TableCell className="font-semibold">{cat.sortOrder}</TableCell>
+                                    <TableCell className="font-medium">{cat.name}</TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cat.isActive ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"}`}>
+                                            {cat.isActive ? "Active" : "Inactive"}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-right space-x-1">
+                                        <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} disabled={loading} className="h-8 w-8">
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="text-red-500 h-8 w-8" onClick={() => handleDelete(cat.id)} disabled={loading}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {filteredCategories.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground py-4">
+                                        No categories found matching criteria.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredCategories.length > 0 && (
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                        Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredCategories.length)} of {filteredCategories.length} categories
+                    </span>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-xs text-muted-foreground px-2">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-
