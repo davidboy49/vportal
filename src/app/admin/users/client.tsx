@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { getUsers, setUserRole } from "@/actions/users";
-import { Loader2, Shield, ShieldOff, Download, Search } from "lucide-react";
+import { Loader2, Shield, ShieldOff, Download, Search, Users } from "lucide-react";
 import { exportToCsv } from "@/lib/export";
+import { AdminHeader } from "@/components/admin-header";
 
 interface AdminUser {
     uid: string;
@@ -108,15 +109,16 @@ export function UsersClient() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold">Users</h2>
-                    <p className="text-sm text-muted-foreground">Manage user roles and access controls.</p>
-                </div>
-                <Button onClick={handleExport} className="self-start md:self-auto flex items-center gap-2">
-                    <Download className="h-4 w-4" /> Export to Excel
-                </Button>
-            </div>
+            <AdminHeader 
+                title="Users"
+                description="Manage user roles and access controls."
+                icon={Users}
+                actions={
+                    <Button onClick={handleExport} className="flex items-center gap-2 shadow-sm">
+                        <Download className="h-4 w-4" /> Export to Excel
+                    </Button>
+                }
+            />
 
             {/* Filter Bar */}
             <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border border-black/5 dark:border-white/5">

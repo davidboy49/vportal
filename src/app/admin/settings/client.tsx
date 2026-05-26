@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { updateSettings } from "@/actions/settings";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
+import { AdminHeader } from "@/components/admin-header";
 
 import Image from "next/image";
 
@@ -34,9 +35,15 @@ export default function AdminSettingsPage({ initialSettings }: { initialSettings
     };
 
     return (
-        <div className="max-w-2xl space-y-6">
-            <h2 className="text-2xl font-bold">Global Settings</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-6">
+            <AdminHeader 
+                title="Portal Settings"
+                description="Configure global application details and portal assets."
+                icon={Settings}
+            />
+            
+            <div className="max-w-2xl bg-white dark:bg-zinc-900/40 p-6 rounded-xl border border-black/5 dark:border-white/5 shadow-sm">
+                <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                     <Label>Portal Name</Label>
                     <Input value={portalName} onChange={e => setPortalName(e.target.value)} required />
@@ -50,7 +57,8 @@ export default function AdminSettingsPage({ initialSettings }: { initialSettings
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Settings
                 </Button>
-            </form>
+                </form>
+            </div>
         </div>
     );
 }

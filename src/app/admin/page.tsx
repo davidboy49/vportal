@@ -4,9 +4,10 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { seedData } from "@/actions/seed";
 import { useState } from "react";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { AdminHeader } from "@/components/admin-header";
 
 export default function AdminDashboard() {
     const { user } = useAuth();
@@ -29,8 +30,11 @@ export default function AdminDashboard() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage your portal content and settings.</p>
+            <AdminHeader 
+                title="Admin Dashboard"
+                description="Manage your portal content and settings."
+                icon={LayoutGrid}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
