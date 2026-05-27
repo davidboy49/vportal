@@ -554,7 +554,7 @@ function LoginForm() {
                             />
                         </div>
                         <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white font-outfit">
-                            vportal
+                            VPortal
                         </span>
                     </div>
                 </div>
