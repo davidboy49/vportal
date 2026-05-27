@@ -237,7 +237,7 @@ export function ChatWidget() {
 
   return (
     <div 
-      className="fixed bottom-6 right-6 z-50 font-sans select-none" 
+      className="fixed bottom-24 right-6 z-50 font-sans select-none" 
       ref={chatContainerRef}
       style={{ fontFamily: "var(--font-outfit), var(--font-geist-sans), sans-serif" }}
     >

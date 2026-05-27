@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
-import { ArrowLeft, ZoomIn } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -543,7 +543,7 @@ function LoginForm() {
     return (
         <div className="relative min-h-screen w-full flex flex-col lg:flex-row bg-slate-50 dark:bg-zinc-950 overflow-hidden">
             {/* Left Pane: Hero Image and Zoom */}
-            <div className="lg:w-[42%] w-full relative h-[320px] lg:h-screen overflow-hidden bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-zinc-800 flex flex-col justify-end">
+            <div className="lg:w-[30%] w-full relative h-[280px] lg:h-screen overflow-hidden bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-zinc-800">
                 {/* Logo Overlay on Left Image for Desktop */}
                 <div className="absolute top-6 left-6 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 select-none bg-white/80 dark:bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/20 shadow-sm">
@@ -563,7 +563,7 @@ function LoginForm() {
                     </div>
                 </div>
 
-                {/* Scaling Image Container */}
+                {/* Scaling Image Container (completely clean with auto-motion breathing zoom) */}
                 <div className="absolute inset-0 w-full h-full overflow-hidden">
                     <img
                         src="/login_hero_image.jpg"
@@ -571,58 +571,12 @@ function LoginForm() {
                         className="w-full h-full object-cover transition-transform duration-300 ease-out"
                         style={{ transform: `scale(${zoomLevel})` }}
                     />
-                    {/* Shadow overlay to blend controls */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/30 pointer-events-none" />
-                </div>
-
-                {/* Floating Lens Zoom Panel */}
-                <div className="relative z-20 m-4 md:m-6 p-4 rounded-xl border border-white/10 bg-black/40 dark:bg-black/50 backdrop-blur-lg text-white shadow-xl flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <ZoomIn className="w-4 h-4 text-violet-400" />
-                            <span className="text-xs font-semibold uppercase tracking-wider font-sans opacity-90">
-                                Lens Zoom Adjuster
-                            </span>
-                        </div>
-                        {/* Zoom level badge */}
-                        <span className="text-xs font-mono font-bold bg-violet-600 dark:bg-violet-600 px-2 py-0.5 rounded shadow-sm">
-                            {zoomLevel.toFixed(2)}x
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="range"
-                            min="1.0"
-                            max="3.0"
-                            step="0.01"
-                            value={zoomLevel}
-                            onChange={(e) => {
-                                setZoomLevel(parseFloat(e.target.value));
-                                setIsAutoMotion(false); // Switch to manual zoom on slide
-                            }}
-                            className="flex-grow h-1.5 rounded-lg appearance-none cursor-pointer bg-white/20 accent-violet-500 focus:outline-none"
-                            style={{
-                                background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${((zoomLevel - 1) / 2) * 100}%, rgba(255, 255, 255, 0.2) ${((zoomLevel - 1) / 2) * 100}%, rgba(255, 255, 255, 0.2) 100%)`
-                            }}
-                        />
-
-                        {/* Auto Motion toggle */}
-                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-                            <input
-                                type="checkbox"
-                                checked={isAutoMotion}
-                                onChange={(e) => setIsAutoMotion(e.target.checked)}
-                                className="rounded border-white/30 text-violet-600 focus:ring-violet-500/50 bg-white/10 w-3.5 h-3.5 cursor-pointer accent-violet-600"
-                            />
-                            <span>Auto Motion</span>
-                        </label>
-                    </div>
+                    <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none" />
                 </div>
             </div>
 
             {/* Right Pane: Login Card Form */}
-            <div className="lg:w-[58%] w-full relative flex flex-col justify-between p-6 lg:p-12 min-h-[600px] lg:min-h-screen">
+            <div className="lg:w-[70%] w-full relative flex flex-col justify-between p-6 lg:p-12 min-h-[600px] lg:min-h-screen">
                 <StripeGradientBackground />
                 
                 {/* Header (Visible on mobile/tablet or for branding balance) */}
