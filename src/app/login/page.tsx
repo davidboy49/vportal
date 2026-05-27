@@ -572,10 +572,14 @@ function LoginForm() {
                                 key={src}
                                 className="w-full h-full flex-shrink-0 relative"
                             >
-                                <img
+                                <Image
                                     src={src}
                                     alt={`Landscape ${index + 1}`}
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    priority={index === 0}
+                                    sizes="(max-width: 1024px) 100vw, 30vw"
+                                    className="object-cover"
+                                    decoding="async"
                                 />
                             </div>
                         ))}
