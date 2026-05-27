@@ -74,9 +74,6 @@ function LoginForm() {
         }
     }, [user, router, redirectUrl]);
 
-    if (user) {
-        return null;
-    }
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -173,6 +170,10 @@ function LoginForm() {
             verify();
         }
     }, [pin, lastUser]);
+
+    if (user) {
+        return null;
+    }
 
     if (showPinInput && lastUser) {
         return (
