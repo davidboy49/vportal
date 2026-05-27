@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Outfit } from "next/font/google";
+import { Geist, Geist_Mono, Outfit, Figtree } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ChatWidget } from "@/components/chat-widget";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
 const VPORTAL_ICON_DATA_URI = "/Screenshot_2.png";
 const geistSans = Geist({
@@ -38,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", figtree.variable)}>
       <body className={`${outfit.variable} ${geistSans.variable} ${geistMono.variable}`}>
         <ThemeProvider
           attribute="class"
@@ -47,8 +51,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <ChatWidget />
+            <TooltipProvider>
+              {children}
+              <ChatWidget />
+            </TooltipProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
