@@ -47,17 +47,20 @@ function StripeGradientBackground() {
                 <div className="absolute top-[-30%] right-[-10%] w-[130%] h-[155%] origin-top-right transform -skew-y-12 rotate-[10deg] translate-x-[8%] lg:translate-x-[15%]">
                     {/* Layer 1: Sky Blue */}
                     <div 
-                        className="absolute top-0 right-0 w-full h-[60%] bg-gradient-to-br from-sky-300 via-blue-400 to-transparent opacity-65 dark:opacity-35 mix-blend-multiply dark:mix-blend-screen filter blur-[70px] animate-pulse duration-[8s]"
+                        className="absolute top-0 right-0 w-full h-[60%] bg-gradient-to-br from-sky-300 via-blue-400 to-transparent opacity-65 dark:opacity-35 mix-blend-multiply dark:mix-blend-screen filter blur-[70px] animate-pulse"
+                        style={{ animationDuration: "8s" }}
                     />
                     
                     {/* Layer 2: Orange/Yellow */}
                     <div 
-                        className="absolute top-[12%] right-[5%] w-[85%] h-[48%] bg-gradient-to-tr from-amber-400 via-orange-500 to-transparent opacity-55 dark:opacity-25 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] animate-pulse duration-[12s]"
+                        className="absolute top-[12%] right-[5%] w-[85%] h-[48%] bg-gradient-to-tr from-amber-400 via-orange-500 to-transparent opacity-55 dark:opacity-25 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] animate-pulse"
+                        style={{ animationDuration: "12s" }}
                     />
 
                     {/* Layer 3: Hot Pink */}
                     <div 
-                        className="absolute top-[22%] right-[10%] w-[75%] h-[52%] bg-gradient-to-r from-pink-400 via-rose-500 to-transparent opacity-60 dark:opacity-30 mix-blend-multiply dark:mix-blend-screen filter blur-[60px] animate-pulse duration-[10s]"
+                        className="absolute top-[22%] right-[10%] w-[75%] h-[52%] bg-gradient-to-r from-pink-400 via-rose-500 to-transparent opacity-60 dark:opacity-30 mix-blend-multiply dark:mix-blend-screen filter blur-[60px] animate-pulse"
+                        style={{ animationDuration: "10s" }}
                     />
 
                     {/* Layer 4: Deep Purple/Indigo */}
@@ -108,9 +111,6 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const { user } = useAuth();
 
-    // Lens Zoom States
-    const [zoomLevel, setZoomLevel] = useState(1.12);
-    const [isAutoMotion, setIsAutoMotion] = useState(true);
 
     // PIN Login States
     const [lastUser, setLastUser] = useState<{
@@ -127,28 +127,6 @@ function LoginForm() {
 
     const redirectUrl = searchParams.get("redirect") || "/";
 
-    // Auto Motion Effect (Ken Burns camera breathing)
-    useEffect(() => {
-        if (!isAutoMotion) return;
-        
-        let animationFrameId: number;
-        const startTime = Date.now();
-        
-        const animate = () => {
-            const elapsed = (Date.now() - startTime) / 1000;
-            // Oscillate zoom level between 1.05 and 1.35 over a 12-second cycle
-            const base = 1.20;
-            const amplitude = 0.15;
-            const frequency = (2 * Math.PI) / 12; // 12 seconds
-            const currentZoom = base + Math.sin(elapsed * frequency) * amplitude;
-            
-            setZoomLevel(parseFloat(currentZoom.toFixed(3)));
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        
-        animationFrameId = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [isAutoMotion]);
 
     // Read last user and PIN status on mount
     useEffect(() => {
@@ -563,13 +541,12 @@ function LoginForm() {
                     </div>
                 </div>
 
-                {/* Scaling Image Container (completely clean with auto-motion breathing zoom) */}
+                {/* Scaling Image Container (completely clean with GPU-accelerated CSS breathing zoom) */}
                 <div className="absolute inset-0 w-full h-full overflow-hidden">
                     <img
                         src="/login_hero_image.jpg"
                         alt="Historic Temple"
-                        className="w-full h-full object-cover transition-transform duration-300 ease-out"
-                        style={{ transform: `scale(${zoomLevel})` }}
+                        className="w-full h-full object-cover animate-ken-burns"
                     />
                     <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none" />
                 </div>

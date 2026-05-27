@@ -221,3 +221,20 @@
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.15);
 }
+
+@keyframes ken-burns-zoom {
+  0% {
+    transform: scale(1.05);
+  }
+  50% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-ken-burns {
+  animation: ken-burns-zoom 16s ease-in-out infinite;
+  will-change: transform;
+}
