@@ -82,3 +82,76 @@ export async function setUserRole(idToken: string, targetUid: string, role: "ADM
         return { success: false, message };
     }
 }
+
+export async function createUserAction(
+    idToken: string,
+    data: {
+        email: string;
+        password: string;
+        displayName?: string;
+        role: "ADMIN" | "USER";
+    }
+) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminAuth || !adminDb) throw new Error("Firebase Admin not initialized");
+
+        // Create Firebase Auth user
+        const userRecord = await adminAuth.createUser({
+            email: data.email,
+            password: data.password,
+            displayName: data.displayName,
+        });
+
+        const targetUid = userRecord.uid;
+
+        // Set custom claims role
+        await adminAuth.setCustomUserClaims(targetUid, { role: data.role });
+
+        // Create Firestore user doc
+        await adminDb.collection("users").doc(targetUid).set({
+            role: data.role,
+            createdAt: new Date().toISOString()
+        });
+
+        await logAdminChange(admin, {
+            action: "CREATE_USER",
+            targetType: "user",
+            targetId: targetUid,
+            message: `Created user ${data.email} (${targetUid}) with role ${data.role}`,
+            metadata: { email: data.email, role: data.role },
+        });
+
+        revalidatePath("/admin/users");
+        return { success: true, uid: targetUid };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to create user";
+        return { success: false, message };
+    }
+}
+
+export async function changeUserPasswordAction(
+    idToken: string,
+    targetUid: string,
+    newPassword: string
+) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminAuth) throw new Error("Firebase Admin not initialized");
+
+        // Update password
+        await adminAuth.updateUser(targetUid, { password: newPassword });
+
+        await logAdminChange(admin, {
+            action: "CHANGE_PASSWORD",
+            targetType: "user",
+            targetId: targetUid,
+            message: `Changed password for user ${targetUid}`,
+        });
+
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to change password";
+        return { success: false, message };
+    }
+}

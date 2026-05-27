@@ -6,9 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { getUsers, setUserRole } from "@/actions/users";
-import { Loader2, Shield, ShieldOff, Download, Search } from "lucide-react";
+import { getUsers, setUserRole, createUserAction, changeUserPasswordAction } from "@/actions/users";
+import { Loader2, Shield, ShieldOff, Download, Search, Key, Plus } from "lucide-react";
 import { exportToCsv } from "@/lib/export";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface AdminUser {
     uid: string;
@@ -26,6 +28,21 @@ export function UsersClient() {
     const { user } = useAuth();
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+
+    // Create User Form State
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [createEmail, setCreateEmail] = useState("");
+    const [createPassword, setCreatePassword] = useState("");
+    const [createDisplayName, setCreateDisplayName] = useState("");
+    const [createRole, setCreateRole] = useState<"ADMIN" | "USER">("USER");
+
+    // Change Password Form State
+    const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+    const [passwordUid, setPasswordUid] = useState("");
+    const [passwordEmail, setPasswordEmail] = useState("");
+    const [passwordNew, setPasswordNew] = useState("");
 
     // Filters & Pagination State
     const [searchTerm, setSearchTerm] = useState("");
@@ -63,6 +80,65 @@ export function UsersClient() {
             fetchUsers();
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setActionLoading(true);
+        setActionError(null);
+
+        try {
+            const token = await user.getIdToken();
+            const res = await createUserAction(token, {
+                email: createEmail,
+                password: createPassword,
+                displayName: createDisplayName || undefined,
+                role: createRole
+            });
+
+            if (res.success) {
+                alert("User created successfully!");
+                setIsCreateOpen(false);
+                setCreateEmail("");
+                setCreatePassword("");
+                setCreateDisplayName("");
+                setCreateRole("USER");
+                fetchUsers();
+            } else {
+                setActionError(res.message || "Failed to create user");
+            }
+        } catch (err: any) {
+            setActionError(err.message || "Unexpected error");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        setActionLoading(true);
+        setActionError(null);
+
+        try {
+            const token = await user.getIdToken();
+            const res = await changeUserPasswordAction(token, passwordUid, passwordNew);
+
+            if (res.success) {
+                alert("Password updated successfully!");
+                setIsPasswordOpen(false);
+                setPasswordNew("");
+                setPasswordUid("");
+                setPasswordEmail("");
+            } else {
+                setActionError(res.message || "Failed to change password");
+            }
+        } catch (err: any) {
+            setActionError(err.message || "Unexpected error");
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -113,9 +189,71 @@ export function UsersClient() {
                     <h2 className="text-2xl font-bold">Users</h2>
                     <p className="text-sm text-muted-foreground">Manage user roles and access controls.</p>
                 </div>
-                <Button onClick={handleExport} className="self-start md:self-auto flex items-center gap-2">
-                    <Download className="h-4 w-4" /> Export to Excel
-                </Button>
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
+                        <Download className="h-4 w-4" /> Export to Excel
+                    </Button>
+                    <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) setActionError(null); }}>
+                        <DialogTrigger asChild>
+                            <Button><Plus className="mr-2 h-4 w-4" /> Add User</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>New User Account</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={handleCreateUser} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Email Address</Label>
+                                    <Input 
+                                        type="email" 
+                                        value={createEmail} 
+                                        onChange={e => setCreateEmail(e.target.value)} 
+                                        required 
+                                        placeholder="user@example.com"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Password</Label>
+                                    <Input 
+                                        type="password" 
+                                        value={createPassword} 
+                                        onChange={e => setCreatePassword(e.target.value)} 
+                                        required 
+                                        placeholder="••••••••"
+                                        minLength={6}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Display Name (Optional)</Label>
+                                    <Input 
+                                        value={createDisplayName} 
+                                        onChange={e => setCreateDisplayName(e.target.value)} 
+                                        placeholder="John Doe"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Role</Label>
+                                    <Select value={createRole} onValueChange={(val: "ADMIN" | "USER") => setCreateRole(val)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="USER">USER</SelectItem>
+                                            <SelectItem value="ADMIN">ADMIN</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {actionError && (
+                                    <p className="text-xs text-red-500">{actionError}</p>
+                                )}
+                                <Button type="submit" className="w-full" disabled={actionLoading}>
+                                    {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create User
+                                </Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {/* Filter Bar */}
@@ -166,7 +304,21 @@ export function UsersClient() {
                                     </span>
                                 </TableCell>
                                 <TableCell>{u.lastSignInTime ? new Date(u.lastSignInTime).toLocaleDateString() : "Never signed in"}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right space-x-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setPasswordUid(u.uid);
+                                            setPasswordEmail(u.email || "");
+                                            setIsPasswordOpen(true);
+                                            setActionError(null);
+                                        }}
+                                        className="h-8"
+                                    >
+                                        <Key className="h-4 w-4 mr-2" />
+                                        Password
+                                    </Button>
                                     {u.email !== user?.email && (
                                         <Button variant="ghost" size="sm" onClick={() => toggleRole(u.uid, u.role)} className="h-8">
                                             {u.role === "ADMIN" ? <ShieldOff className="h-4 w-4 mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
@@ -216,6 +368,38 @@ export function UsersClient() {
                     </div>
                 </div>
             )}
+
+            {/* Change Password Dialog */}
+            <Dialog open={isPasswordOpen} onOpenChange={(open) => { setIsPasswordOpen(open); if (!open) setActionError(null); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Change Password</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-xs text-muted-foreground mb-2">
+                        Updating password for: <span className="font-semibold text-foreground">{passwordEmail}</span>
+                    </p>
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>New Password</Label>
+                            <Input
+                                type="password"
+                                value={passwordNew}
+                                onChange={e => setPasswordNew(e.target.value)}
+                                required
+                                placeholder="••••••••"
+                                minLength={6}
+                            />
+                        </div>
+                        {actionError && (
+                            <p className="text-xs text-red-500">{actionError}</p>
+                        )}
+                        <Button type="submit" className="w-full" disabled={actionLoading}>
+                            {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Update Password
+                        </Button>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

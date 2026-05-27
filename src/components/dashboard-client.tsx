@@ -227,6 +227,23 @@ export function DashboardClient({
         }, (error) => console.error("Error fetching categories:", error));
 
         const fetchUserData = async () => {
+            const isGuest = user.isAnonymous || user.email === "guest@vportal.com";
+            if (isGuest) {
+                try {
+                    const storedFavs = localStorage.getItem("vportal_guest_favorites") || "[]";
+                    setFavorites(new Set(JSON.parse(storedFavs)));
+                } catch (e) {
+                    setFavorites(new Set());
+                }
+                try {
+                    const storedRecents = localStorage.getItem("vportal_guest_recent") || "[]";
+                    setRecent(JSON.parse(storedRecents));
+                } catch (e) {
+                    setRecent([]);
+                }
+                return;
+            }
+
             try {
                 const favoritesSnapshot = await getDocs(collection(db, "users", user.uid, "favorites"));
                 setFavorites(new Set(favoritesSnapshot.docs.map(doc => doc.id)));
@@ -241,9 +258,15 @@ export function DashboardClient({
 
         fetchUserData();
 
+        const handleGuestUpdate = () => {
+            fetchUserData();
+        };
+        window.addEventListener("vportal_guest_data_updated", handleGuestUpdate);
+
         return () => {
             unsubscribeApps();
             unsubscribeCategories();
+            window.removeEventListener("vportal_guest_data_updated", handleGuestUpdate);
         };
     }, [user]);
 

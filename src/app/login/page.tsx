@@ -224,9 +224,23 @@ function LoginForm() {
             return;
         }
         try {
-            await signInAnonymously(auth);
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "An unexpected error occurred");
+            // Log in using the shared guest account
+            await signInWithEmailAndPassword(auth, "guest@vportal.com", "VPortalGuest123!");
+        } catch (err: any) {
+            // If the account does not exist, create it once dynamically
+            if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+                try {
+                    await createUserWithEmailAndPassword(auth, "guest@vportal.com", "VPortalGuest123!");
+                    if (auth.currentUser) {
+                        const { updateProfile } = await import("firebase/auth");
+                        await updateProfile(auth.currentUser, { displayName: "Guest User" });
+                    }
+                } catch (createErr: any) {
+                    setError(createErr instanceof Error ? createErr.message : "Failed to sign in as guest");
+                }
+            } else {
+                setError(err instanceof Error ? err.message : "An unexpected error occurred");
+            }
         }
     };
 

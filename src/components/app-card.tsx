@@ -29,6 +29,26 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
         // Optimistic update
         onToggleFavorite(app.id, !isFavorite);
 
+        const isGuest = user.isAnonymous || user.email === "guest@vportal.com";
+        if (isGuest) {
+            try {
+                const storedFavs = localStorage.getItem("vportal_guest_favorites") || "[]";
+                const favsList: string[] = JSON.parse(storedFavs);
+                let nextList: string[];
+                if (favsList.includes(app.id)) {
+                    nextList = favsList.filter(id => id !== app.id);
+                } else {
+                    nextList = [...favsList, app.id];
+                }
+                localStorage.setItem("vportal_guest_favorites", JSON.stringify(nextList));
+                window.dispatchEvent(new Event("vportal_guest_data_updated"));
+            } catch (err) {
+                console.error("Failed to save guest favorites", err);
+                onToggleFavorite(app.id, isFavorite);
+            }
+            return;
+        }
+
         try {
             setLoading(true);
             const token = await user.getIdToken();
@@ -44,7 +64,21 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
 
     const handleLaunch = async () => {
         if (user) {
-            user.getIdToken().then(token => logRecentApp(token, app.id));
+            const isGuest = user.isAnonymous || user.email === "guest@vportal.com";
+            if (!isGuest) {
+                user.getIdToken().then(token => logRecentApp(token, app.id));
+            } else {
+                try {
+                    const stored = localStorage.getItem("vportal_guest_recent") || "[]";
+                    const recentList: string[] = JSON.parse(stored);
+                    const filtered = recentList.filter(id => id !== app.id);
+                    filtered.unshift(app.id);
+                    localStorage.setItem("vportal_guest_recent", JSON.stringify(filtered.slice(0, 10)));
+                    window.dispatchEvent(new Event("vportal_guest_data_updated"));
+                } catch (e) {
+                    console.error("Failed to log guest recent app", e);
+                }
+            }
         }
         window.open(app.url, "_blank");
     };
