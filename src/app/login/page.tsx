@@ -186,6 +186,7 @@ function LoginForm() {
                                     alt={lastUser.displayName || "User Avatar"}
                                     width={80}
                                     height={80}
+                                    unoptimized
                                     className="w-20 h-20 rounded-full border-2 border-blue-500 shadow-lg object-cover"
                                 />
                             ) : (

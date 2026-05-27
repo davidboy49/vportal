@@ -497,6 +497,7 @@ export function DashboardClient({
                                     alt="User Avatar"
                                     width={32}
                                     height={32}
+                                    unoptimized
                                     className="w-8 h-8 rounded-full border border-black/10 dark:border-white/10"
                                 />
                             ) : (
