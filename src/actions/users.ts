@@ -46,6 +46,7 @@ export async function getUsers(idToken: string, limit = 50) {
                 role: dbUser?.role || "USER", // fallback
                 lastSignInTime: u.metadata.lastSignInTime,
                 creationTime: u.metadata.creationTime,
+                disabled: u.disabled,
             };
         });
 
@@ -152,6 +153,62 @@ export async function changeUserPasswordAction(
         return { success: true };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to change password";
+        return { success: false, message };
+    }
+}
+
+export async function toggleUserStatusAction(idToken: string, targetUid: string, disabled: boolean) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminAuth) throw new Error("Firebase Admin not initialized");
+
+        await adminAuth.updateUser(targetUid, { disabled });
+
+        await logAdminChange(admin, {
+            action: "TOGGLE_USER_STATUS",
+            targetType: "user",
+            targetId: targetUid,
+            message: `User ${targetUid} has been ${disabled ? "disabled" : "enabled"}`,
+            metadata: { disabled },
+        });
+
+        revalidatePath("/admin/users");
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to toggle user status";
+        return { success: false, message };
+    }
+}
+
+export async function deleteUsersAction(idToken: string, targetUids: string[]) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        const db = adminDb;
+        if (!adminAuth || !db) throw new Error("Firebase Admin not initialized");
+
+        // Delete from Auth
+        const deleteResult = await adminAuth.deleteUsers(targetUids);
+        
+        // Delete from Firestore
+        const batch = db.batch();
+        targetUids.forEach((uid) => {
+            const ref = db.collection("users").doc(uid);
+            batch.delete(ref);
+        });
+        await batch.commit();
+
+        await logAdminChange(admin, {
+            action: "DELETE_USERS",
+            targetType: "user",
+            targetId: targetUids.length === 1 ? targetUids[0] : "BULK",
+            message: `Deleted ${targetUids.length} user(s). Failed: ${deleteResult.failureCount}`,
+            metadata: { targetUids, deleteResult },
+        });
+
+        revalidatePath("/admin/users");
+        return { success: true, failureCount: deleteResult.failureCount };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to delete users";
         return { success: false, message };
     }
 }

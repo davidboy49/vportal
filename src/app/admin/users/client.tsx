@@ -6,11 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { getUsers, setUserRole, createUserAction, changeUserPasswordAction } from "@/actions/users";
-import { Loader2, Shield, ShieldOff, Download, Search, Key, Plus } from "lucide-react";
+import { getUsers, setUserRole, createUserAction, changeUserPasswordAction, toggleUserStatusAction, deleteUsersAction } from "@/actions/users";
+import { Loader2, Shield, ShieldOff, Download, Search, Key, Plus, Trash2 } from "lucide-react";
 import { exportToCsv } from "@/lib/export";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AdminUser {
     uid: string;
@@ -20,6 +22,7 @@ interface AdminUser {
     role: string;
     lastSignInTime?: string;
     creationTime?: string;
+    disabled?: boolean;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -30,6 +33,7 @@ export function UsersClient() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
     // Create User Form State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -167,6 +171,76 @@ export function UsersClient() {
         return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredUsers, currentPage]);
 
+    const handleToggleStatus = async (targetUid: string, currentStatus: boolean) => {
+        if (!user) return;
+        const newStatus = !currentStatus;
+        try {
+            // Optimistic update
+            setUsers(current => current.map(u => u.uid === targetUid ? { ...u, disabled: newStatus } : u));
+            const token = await user.getIdToken();
+            const res = await toggleUserStatusAction(token, targetUid, newStatus);
+            if (!res.success) {
+                // Revert
+                setUsers(current => current.map(u => u.uid === targetUid ? { ...u, disabled: currentStatus } : u));
+                alert(res.message || "Failed to toggle status");
+            }
+        } catch (e) {
+            setUsers(current => current.map(u => u.uid === targetUid ? { ...u, disabled: currentStatus } : u));
+            console.error(e);
+        }
+    };
+
+    const handleDeleteUser = async (targetUid: string) => {
+        if (!confirm("Are you sure you want to delete this user?")) return;
+        if (!user) return;
+        try {
+            const token = await user.getIdToken();
+            const res = await deleteUsersAction(token, [targetUid]);
+            if (res.success) {
+                setUsers(current => current.filter(u => u.uid !== targetUid));
+                setSelectedUsers(current => current.filter(id => id !== targetUid));
+            } else {
+                alert(res.message || "Failed to delete user");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`Are you sure you want to delete ${selectedUsers.length} user(s)?`)) return;
+        if (!user) return;
+        try {
+            const token = await user.getIdToken();
+            const res = await deleteUsersAction(token, selectedUsers);
+            if (res.success) {
+                setUsers(current => current.filter(u => !selectedUsers.includes(u.uid)));
+                setSelectedUsers([]);
+                if (res.failureCount && res.failureCount > 0) {
+                    alert(`Deleted users, but ${res.failureCount} failed to delete.`);
+                }
+            } else {
+                alert(res.message || "Failed to delete users");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0) {
+            setSelectedUsers([]);
+        } else {
+            setSelectedUsers(paginatedUsers.map(u => u.uid));
+        }
+    };
+
+    const toggleSelectUser = (uid: string) => {
+        setSelectedUsers(prev => 
+            prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
+        );
+    };
+
     // Export to Excel handler
     const handleExport = () => {
         const headers = ["User ID", "Email", "Display Name", "Role", "Last Sign In"];
@@ -190,6 +264,11 @@ export function UsersClient() {
                     <p className="text-sm text-muted-foreground">Manage user roles and access controls.</p>
                 </div>
                 <div className="flex items-center gap-2 self-start md:self-auto">
+                    {selectedUsers.length > 0 && (
+                        <Button variant="destructive" onClick={handleBulkDelete} className="flex items-center gap-2">
+                            <Trash2 className="h-4 w-4" /> Delete Selected ({selectedUsers.length})
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
                         <Download className="h-4 w-4" /> Export to Excel
                     </Button>
@@ -286,9 +365,16 @@ export function UsersClient() {
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
+                            <TableHead className="w-12 text-center">
+                                <Checkbox 
+                                    checked={paginatedUsers.length > 0 && selectedUsers.length === paginatedUsers.length}
+                                    onCheckedChange={toggleSelectAll}
+                                />
+                            </TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Display Name</TableHead>
                             <TableHead>Role</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead>Last Sign In</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -296,12 +382,32 @@ export function UsersClient() {
                     <TableBody>
                         {paginatedUsers.map((u) => (
                             <TableRow key={u.uid} className="hover:bg-muted/30">
+                                <TableCell className="text-center">
+                                    <Checkbox 
+                                        checked={selectedUsers.includes(u.uid)}
+                                        onCheckedChange={() => toggleSelectUser(u.uid)}
+                                        disabled={u.email === user?.email}
+                                    />
+                                </TableCell>
                                 <TableCell className="font-medium">{u.email}</TableCell>
                                 <TableCell>{u.displayName || "-"}</TableCell>
                                 <TableCell>
                                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${u.role === "ADMIN" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"}`}>
                                         {u.role}
                                     </span>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            checked={!u.disabled}
+                                            onCheckedChange={() => handleToggleStatus(u.uid, u.disabled ?? false)}
+                                            disabled={u.email === user?.email}
+                                            className="data-[state=checked]:bg-zinc-950 dark:data-[state=checked]:bg-zinc-50"
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {!u.disabled ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
                                 </TableCell>
                                 <TableCell>{u.lastSignInTime ? new Date(u.lastSignInTime).toLocaleDateString() : "Never signed in"}</TableCell>
                                 <TableCell className="text-right space-x-1">
@@ -320,17 +426,22 @@ export function UsersClient() {
                                         Password
                                     </Button>
                                     {u.email !== user?.email && (
-                                        <Button variant="ghost" size="sm" onClick={() => toggleRole(u.uid, u.role)} className="h-8">
-                                            {u.role === "ADMIN" ? <ShieldOff className="h-4 w-4 mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-                                            {u.role === "ADMIN" ? "Demote" : "Promote"}
-                                        </Button>
+                                        <>
+                                            <Button variant="ghost" size="sm" onClick={() => toggleRole(u.uid, u.role)} className="h-8">
+                                                {u.role === "ADMIN" ? <ShieldOff className="h-4 w-4 mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                                                {u.role === "ADMIN" ? "Demote" : "Promote"}
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(u.uid)} className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </>
                                     )}
                                 </TableCell>
                             </TableRow>
                         ))}
                         {filteredUsers.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                     No users found matching the criteria.
                                 </TableCell>
                             </TableRow>
