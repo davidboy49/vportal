@@ -264,8 +264,51 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Icon URL</Label>
-                                    <Input value={iconUrl} onChange={e => setIconUrl(e.target.value)} type="url" />
+                                    <div className="flex justify-between items-center">
+                                        <Label>Icon URL</Label>
+                                        {url && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    try {
+                                                        const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+                                                        setIconUrl(`https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`);
+                                                    } catch (e) {
+                                                        const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
+                                                        if (match && match[1]) {
+                                                            setIconUrl(`https://www.google.com/s2/favicons?domain=${match[1]}&sz=128`);
+                                                        } else {
+                                                            alert("Please enter a valid App URL first.");
+                                                        }
+                                                    }
+                                                }}
+                                                className="text-xs text-primary hover:underline font-medium"
+                                            >
+                                                Use Website Icon
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            value={iconUrl} 
+                                            onChange={e => setIconUrl(e.target.value)} 
+                                            type="url" 
+                                            placeholder="https://example.com/icon.png"
+                                            className="flex-1"
+                                        />
+                                        {iconUrl && (
+                                            <div className="w-9 h-9 border border-border rounded flex items-center justify-center bg-muted shrink-0 p-1 overflow-hidden">
+                                                <img 
+                                                    src={iconUrl} 
+                                                    alt="Preview" 
+                                                    className="w-full h-full object-contain" 
+                                                    onError={(e) => {
+                                                        (e.target as HTMLElement).style.display = 'none';
+                                                    }} 
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
