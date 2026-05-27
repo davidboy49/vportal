@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -108,6 +108,10 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const { user } = useAuth();
 
+    // Lens Zoom States
+    const [zoomLevel, setZoomLevel] = useState(1.12);
+    const [isAutoMotion, setIsAutoMotion] = useState(true);
+
     // PIN Login States
     const [lastUser, setLastUser] = useState<{
         uid: string;
@@ -122,6 +126,29 @@ function LoginForm() {
     const [pinLoading, setPinLoading] = useState(false);
 
     const redirectUrl = searchParams.get("redirect") || "/";
+
+    // Auto Motion Effect (Ken Burns camera breathing)
+    useEffect(() => {
+        if (!isAutoMotion) return;
+        
+        let animationFrameId: number;
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            // Oscillate zoom level between 1.05 and 1.35 over a 12-second cycle
+            const base = 1.20;
+            const amplitude = 0.15;
+            const frequency = (2 * Math.PI) / 12; // 12 seconds
+            const currentZoom = base + Math.sin(elapsed * frequency) * amplitude;
+            
+            setZoomLevel(parseFloat(currentZoom.toFixed(3)));
+            animationFrameId = requestAnimationFrame(animate);
+        };
+        
+        animationFrameId = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animationFrameId);
+    }, [isAutoMotion]);
 
     // Read last user and PIN status on mount
     useEffect(() => {
@@ -257,295 +284,366 @@ function LoginForm() {
         return null;
     }
 
-    if (showPinInput && lastUser) {
-        return (
-            <div className="relative min-h-screen w-full flex flex-col justify-between p-6 lg:p-12 overflow-hidden">
-                <StripeGradientBackground />
-                
-                {/* Header */}
-                <div className="z-10 flex justify-between items-center w-full">
-                    <BrandLogo />
-                </div>
-
-                {/* Main Card container */}
-                <div className="z-10 flex items-center justify-center flex-grow py-8">
-                    <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
-                        <CardHeader className="text-center pb-4 p-0">
-                            <div className="flex justify-center mb-4">
-                                {lastUser.photoURL ? (
-                                    <Image
-                                        src={lastUser.photoURL}
-                                        alt={lastUser.displayName || "User Avatar"}
-                                        width={80}
-                                        height={80}
-                                        unoptimized
-                                        className="w-20 h-20 rounded-full border-2 border-violet-500/30 shadow-lg object-cover p-1 bg-white dark:bg-zinc-900"
-                                    />
-                                ) : (
-                                    <div className="w-20 h-20 rounded-full bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-2xl uppercase border-2 border-violet-500/20 shadow-md">
-                                        {lastUser.email ? lastUser.email.slice(0, 2) : "U"}
-                                    </div>
-                                )}
-                            </div>
-                            <CardTitle className="text-2xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
-                                Welcome back, {lastUser.displayName || lastUser.email?.split("@")[0] || "User"}
-                            </CardTitle>
-                            <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-                                Enter your 4-digit Quick Login PIN
-                            </CardDescription>
-                        </CardHeader>
-                        
-                        <CardContent className="space-y-6 px-0 pt-6 pb-0">
-                            {/* PIN Indicator dots */}
-                            <div className="flex justify-center gap-6 py-2">
-                                {[0, 1, 2, 3].map((index) => (
-                                    <div
-                                        key={index}
-                                        className={cn(
-                                            "w-3.5 h-3.5 rounded-full border-2 transition-all duration-200",
-                                            pin.length > index
-                                                ? "bg-violet-600 border-violet-600 scale-110 shadow-md shadow-violet-500/40"
-                                                : "border-slate-300 dark:border-zinc-700 bg-transparent"
-                                        )}
-                                    />
-                                ))}
-                            </div>
-
-                            {pinError && (
-                                <p className="text-sm text-red-500 text-center font-medium animate-bounce">
-                                    {pinError}
-                                </p>
+    const renderRightPaneContent = () => {
+        if (showPinInput && lastUser) {
+            return (
+                <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
+                    <CardHeader className="text-center pb-4 p-0">
+                        <div className="flex justify-center mb-4">
+                            {lastUser.photoURL ? (
+                                <Image
+                                    src={lastUser.photoURL}
+                                    alt={lastUser.displayName || "User Avatar"}
+                                    width={80}
+                                    height={80}
+                                    unoptimized
+                                    className="w-20 h-20 rounded-full border-2 border-violet-500/30 shadow-lg object-cover p-1 bg-white dark:bg-zinc-900"
+                                />
+                            ) : (
+                                <div className="w-20 h-20 rounded-full bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-2xl uppercase border-2 border-violet-500/20 shadow-md">
+                                    {lastUser.email ? lastUser.email.slice(0, 2) : "U"}
+                                </div>
                             )}
+                        </div>
+                        <CardTitle className="text-2xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
+                            Welcome back, {lastUser.displayName || lastUser.email?.split("@")[0] || "User"}
+                        </CardTitle>
+                        <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
+                            Enter your 4-digit Quick Login PIN
+                        </CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-6 px-0 pt-6 pb-0">
+                        {/* PIN Indicator dots */}
+                        <div className="flex justify-center gap-6 py-2">
+                            {[0, 1, 2, 3].map((index) => (
+                                <div
+                                    key={index}
+                                    className={cn(
+                                        "w-3.5 h-3.5 rounded-full border-2 transition-all duration-200",
+                                        pin.length > index
+                                            ? "bg-violet-600 border-violet-600 scale-110 shadow-md shadow-violet-500/40"
+                                            : "border-slate-300 dark:border-zinc-700 bg-transparent"
+                                    )}
+                                />
+                            ))}
+                        </div>
 
-                            {/* Numeric pad */}
-                            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
-                                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-                                    <Button
-                                        key={num}
-                                        variant="outline"
-                                        type="button"
-                                        onClick={() => handleKeyPress(num)}
-                                        disabled={pinLoading}
-                                        className="h-14 text-xl font-semibold border-slate-200 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:scale-[1.05] active:scale-[0.98] transition-all rounded-xl select-none text-slate-800 dark:text-slate-100 shadow-sm"
-                                    >
-                                        {num}
-                                    </Button>
-                                ))}
+                        {pinError && (
+                            <p className="text-sm text-red-500 text-center font-medium animate-bounce">
+                                {pinError}
+                            </p>
+                        )}
+
+                        {/* Numeric pad */}
+                        <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+                            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                                 <Button
-                                    variant="ghost"
-                                    type="button"
-                                    onClick={handleClear}
-                                    disabled={pinLoading || pin.length === 0}
-                                    className="h-14 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl"
-                                >
-                                    Clear
-                                </Button>
-                                <Button
+                                    key={num}
                                     variant="outline"
                                     type="button"
-                                    onClick={() => handleKeyPress("0")}
+                                    onClick={() => handleKeyPress(num)}
                                     disabled={pinLoading}
                                     className="h-14 text-xl font-semibold border-slate-200 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:scale-[1.05] active:scale-[0.98] transition-all rounded-xl select-none text-slate-800 dark:text-slate-100 shadow-sm"
                                 >
-                                    0
+                                    {num}
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    type="button"
-                                    onClick={handleDelete}
-                                    disabled={pinLoading || pin.length === 0}
-                                    className="h-14 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center rounded-xl"
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </CardContent>
-                        
-                        <CardFooter className="justify-center border-t border-slate-100 dark:border-zinc-900 pt-5 mt-6 px-0 pb-0">
+                            ))}
                             <Button
-                                variant="link"
-                                size="sm"
-                                onClick={() => setShowPinInput(false)}
-                                className="text-xs text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 flex items-center gap-1.5 transition-colors font-medium"
+                                variant="ghost"
+                                type="button"
+                                onClick={handleClear}
+                                disabled={pinLoading || pin.length === 0}
+                                className="h-14 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5" />
-                                <span>Sign in with another account</span>
+                                Clear
                             </Button>
-                        </CardFooter>
-                    </Card>
+                            <Button
+                                variant="outline"
+                                type="button"
+                                onClick={() => handleKeyPress("0")}
+                                disabled={pinLoading}
+                                className="h-14 text-xl font-semibold border-slate-200 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:scale-[1.05] active:scale-[0.98] transition-all rounded-xl select-none text-slate-800 dark:text-slate-100 shadow-sm"
+                            >
+                                0
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={pinLoading || pin.length === 0}
+                                className="h-14 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center rounded-xl"
+                            >
+                                Delete
+                            </Button>
+                        </div>
+                    </CardContent>
+                    
+                    <CardFooter className="justify-center border-t border-slate-100 dark:border-zinc-900 pt-5 mt-6 px-0 pb-0">
+                        <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => setShowPinInput(false)}
+                            className="text-xs text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 flex items-center gap-1.5 transition-colors font-medium"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Sign in with another account</span>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            );
+        }
+
+        return (
+            <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
+                <CardHeader className="p-0 pb-6 text-left">
+                    <CardTitle className="text-2xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
+                        {isSignUp ? "Create your account" : "Sign in to your account"}
+                    </CardTitle>
+                    <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
+                        {isSignUp ? "Enter your details to sign up for VPortal" : "Enter your credentials or use an integration"}
+                    </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="p-0">
+                    <form onSubmit={handleAuth} className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="identifier" className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">
+                                Username or Email
+                            </Label>
+                            <Input
+                                id="identifier"
+                                type="text"
+                                placeholder="username or you@example.com"
+                                value={identifier}
+                                onChange={(e) => setIdentifier(e.target.value)}
+                                required
+                                className="h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-slate-100 focus-visible:ring-2 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 focus-visible:ring-offset-0 placeholder:text-slate-400 transition-all font-sans"
+                            />
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                            <div className="flex justify-between items-center">
+                                <Label htmlFor="password" className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">
+                                    Password
+                                </Label>
+                                {!isSignUp && (
+                                    <a 
+                                        href="#" 
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            alert("Password reset is not configured in this Company Portal. Please contact your system administrator.");
+                                        }}
+                                        className="text-xs text-violet-600 dark:text-violet-400 hover:underline hover:text-violet-700 font-medium transition-all"
+                                    >
+                                        Forgot your password?
+                                    </a>
+                                )}
+                            </div>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-slate-100 focus-visible:ring-2 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 focus-visible:ring-offset-0 placeholder:text-slate-400 transition-all font-sans"
+                            />
+                        </div>
+
+                        {/* Remember me on this device */}
+                        <div className="flex items-center space-x-2 pt-1">
+                            <Checkbox 
+                                id="remember" 
+                                checked={rememberMe}
+                                onCheckedChange={(checked) => setRememberMe(!!checked)}
+                                className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                            />
+                            <label 
+                                htmlFor="remember" 
+                                className="text-xs text-slate-500 dark:text-slate-400 font-medium select-none cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Remember me on this device
+                            </label>
+                        </div>
+
+                        {error && (
+                            <p className="text-xs text-red-500 font-medium bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 px-3 py-2 rounded-lg leading-relaxed">
+                                {error}
+                            </p>
+                        )}
+                        
+                        <Button 
+                            type="submit" 
+                            className="w-full h-10 mt-2 bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98] rounded-lg"
+                        >
+                            {isSignUp ? "Sign Up" : "Sign In"}
+                        </Button>
+                    </form>
+                    
+                    {/* Divider */}
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-slate-200 dark:border-zinc-800"></div>
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-white dark:bg-zinc-950 px-2 text-slate-400 dark:text-slate-500 font-medium select-none">
+                                Or sign in with
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Integration Sign In Buttons */}
+                    <div className="space-y-2">
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
+                            onClick={handleGoogleSignIn}
+                        >
+                            <GoogleIcon />
+                            <span>Google</span>
+                        </Button>
+                        
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
+                            onClick={() => alert("Passkey enrollment is available from your Profile settings after signing in.")}
+                        >
+                            <PasskeyIcon />
+                            <span>Passkey</span>
+                        </Button>
+
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
+                            onClick={handleGuestSignIn}
+                        >
+                            <GuestIcon />
+                            <span>Continue as Guest</span>
+                        </Button>
+                    </div>
+                </CardContent>
+                
+                <CardFooter className="justify-center p-0 pt-6 mt-6 border-t border-slate-100 dark:border-zinc-900">
+                    <Button 
+                        variant="link" 
+                        onClick={() => {
+                            setError("");
+                            setIsSignUp(!isSignUp);
+                        }}
+                        className="text-xs text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 font-medium transition-colors p-0 h-auto"
+                    >
+                        {isSignUp ? "Already have an account? Sign in" : "New to VPortal? Create account"}
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
+    };
+
+    return (
+        <div className="relative min-h-screen w-full flex flex-col lg:flex-row bg-slate-50 dark:bg-zinc-950 overflow-hidden">
+            {/* Left Pane: Hero Image and Zoom */}
+            <div className="lg:w-[42%] w-full relative h-[320px] lg:h-screen overflow-hidden bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-zinc-800 flex flex-col justify-end">
+                {/* Logo Overlay on Left Image for Desktop */}
+                <div className="absolute top-6 left-6 z-20 hidden lg:block">
+                    <div className="flex items-center gap-2 select-none bg-white/80 dark:bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/20 shadow-sm">
+                        <div className="relative w-5 h-5 flex items-center justify-center bg-violet-600 rounded-md">
+                            <Image 
+                                src="/Screenshot_2.png" 
+                                alt="VPortal Logo" 
+                                width={14} 
+                                height={14} 
+                                unoptimized
+                                className="w-3.5 h-3.5 object-contain invert brightness-0"
+                            />
+                        </div>
+                        <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white font-outfit">
+                            vportal
+                        </span>
+                    </div>
                 </div>
 
-                {/* Footer */}
+                {/* Scaling Image Container */}
+                <div className="absolute inset-0 w-full h-full overflow-hidden">
+                    <img
+                        src="/login_hero_image.jpg"
+                        alt="Historic Temple"
+                        className="w-full h-full object-cover transition-transform duration-300 ease-out"
+                        style={{ transform: `scale(${zoomLevel})` }}
+                    />
+                    {/* Shadow overlay to blend controls */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/30 pointer-events-none" />
+                </div>
+
+                {/* Floating Lens Zoom Panel */}
+                <div className="relative z-20 m-4 md:m-6 p-4 rounded-xl border border-white/10 bg-black/40 dark:bg-black/50 backdrop-blur-lg text-white shadow-xl flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <ZoomIn className="w-4 h-4 text-violet-400" />
+                            <span className="text-xs font-semibold uppercase tracking-wider font-sans opacity-90">
+                                Lens Zoom Adjuster
+                            </span>
+                        </div>
+                        {/* Zoom level badge */}
+                        <span className="text-xs font-mono font-bold bg-violet-600 dark:bg-violet-600 px-2 py-0.5 rounded shadow-sm">
+                            {zoomLevel.toFixed(2)}x
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <input
+                            type="range"
+                            min="1.0"
+                            max="3.0"
+                            step="0.01"
+                            value={zoomLevel}
+                            onChange={(e) => {
+                                setZoomLevel(parseFloat(e.target.value));
+                                setIsAutoMotion(false); // Switch to manual zoom on slide
+                            }}
+                            className="flex-grow h-1.5 rounded-lg appearance-none cursor-pointer bg-white/20 accent-violet-500 focus:outline-none"
+                            style={{
+                                background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${((zoomLevel - 1) / 2) * 100}%, rgba(255, 255, 255, 0.2) ${((zoomLevel - 1) / 2) * 100}%, rgba(255, 255, 255, 0.2) 100%)`
+                            }}
+                        />
+
+                        {/* Auto Motion toggle */}
+                        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={isAutoMotion}
+                                onChange={(e) => setIsAutoMotion(e.target.checked)}
+                                className="rounded border-white/30 text-violet-600 focus:ring-violet-500/50 bg-white/10 w-3.5 h-3.5 cursor-pointer accent-violet-600"
+                            />
+                            <span>Auto Motion</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Pane: Login Card Form */}
+            <div className="lg:w-[58%] w-full relative flex flex-col justify-between p-6 lg:p-12 min-h-[600px] lg:min-h-screen">
+                <StripeGradientBackground />
+                
+                {/* Header (Visible on mobile/tablet or for branding balance) */}
+                <div className="z-10 flex justify-between items-center w-full lg:hidden">
+                    <BrandLogo />
+                </div>
+                <div className="z-10 flex justify-between items-center w-full hidden lg:flex">
+                    <div /> {/* Layout spacer on desktop */}
+                </div>
+
+                {/* Main Card */}
+                <div className="z-10 flex items-center justify-center flex-grow py-8 md:py-12">
+                    {renderRightPaneContent()}
+                </div>
+
+                {/* Page Footer */}
                 <div className="z-10 flex justify-between items-center w-full text-xs text-slate-400 dark:text-slate-500 font-sans mt-auto">
                     <span>© VPortal</span>
                     <div className="flex gap-4">
                         <a href="#" className="hover:underline transition-all">Privacy & terms</a>
                     </div>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="relative min-h-screen w-full flex flex-col justify-between p-6 lg:p-12 overflow-hidden">
-            <StripeGradientBackground />
-            
-            {/* Header */}
-            <div className="z-10 flex justify-between items-center w-full">
-                <BrandLogo />
-            </div>
-
-            {/* Main Login Form Wrapper */}
-            <div className="z-10 flex items-center justify-center flex-grow py-8">
-                <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
-                    <CardHeader className="p-0 pb-6 text-left">
-                        <CardTitle className="text-2xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
-                            {isSignUp ? "Create your account" : "Sign in to your account"}
-                        </CardTitle>
-                        <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-                            {isSignUp ? "Enter your details to sign up for VPortal" : "Enter your credentials or use an integration"}
-                        </CardDescription>
-                    </CardHeader>
-                    
-                    <CardContent className="p-0">
-                        <form onSubmit={handleAuth} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="identifier" className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">
-                                    Username or Email
-                                </Label>
-                                <Input
-                                    id="identifier"
-                                    type="text"
-                                    placeholder="username or you@example.com"
-                                    value={identifier}
-                                    onChange={(e) => setIdentifier(e.target.value)}
-                                    required
-                                    className="h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-slate-100 focus-visible:ring-2 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 focus-visible:ring-offset-0 placeholder:text-slate-400 transition-all font-sans"
-                                />
-                            </div>
-                            
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between items-center">
-                                    <Label htmlFor="password" className="text-[13px] font-semibold text-slate-600 dark:text-slate-300">
-                                        Password
-                                    </Label>
-                                    {!isSignUp && (
-                                        <a 
-                                            href="#" 
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                alert("Password reset is not configured in this Company Portal. Please contact your system administrator.");
-                                            }}
-                                            className="text-xs text-violet-600 dark:text-violet-400 hover:underline hover:text-violet-700 font-medium transition-all"
-                                        >
-                                            Forgot your password?
-                                        </a>
-                                    )}
-                                </div>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    className="h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-lg text-slate-800 dark:text-slate-100 focus-visible:ring-2 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 focus-visible:ring-offset-0 placeholder:text-slate-400 transition-all font-sans"
-                                />
-                            </div>
-
-                            {/* Remember me on this device */}
-                            <div className="flex items-center space-x-2 pt-1">
-                                <Checkbox 
-                                    id="remember" 
-                                    checked={rememberMe}
-                                    onCheckedChange={(checked) => setRememberMe(!!checked)}
-                                    className="data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                                />
-                                <label 
-                                    htmlFor="remember" 
-                                    className="text-xs text-slate-500 dark:text-slate-400 font-medium select-none cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Remember me on this device
-                                </label>
-                            </div>
-
-                            {error && (
-                                <p className="text-xs text-red-500 font-medium bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 px-3 py-2 rounded-lg leading-relaxed">
-                                    {error}
-                                </p>
-                            )}
-                            
-                            <Button 
-                                type="submit" 
-                                className="w-full h-10 mt-2 bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98] rounded-lg"
-                            >
-                                {isSignUp ? "Sign Up" : "Sign In"}
-                            </Button>
-                        </form>
-                        
-                        {/* Divider */}
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-slate-200 dark:border-zinc-800"></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-white dark:bg-zinc-950 px-2 text-slate-400 dark:text-slate-500 font-medium select-none">
-                                    Or sign in with
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Integration Sign In Buttons */}
-                        <div className="space-y-2">
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
-                                onClick={handleGoogleSignIn}
-                            >
-                                <GoogleIcon />
-                                <span>Google</span>
-                            </Button>
-                            
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
-                                onClick={() => alert("Passkey enrollment is available from your Profile settings after signing in.")}
-                            >
-                                <PasskeyIcon />
-                                <span>Passkey</span>
-                            </Button>
-
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
-                                onClick={handleGuestSignIn}
-                            >
-                                <GuestIcon />
-                                <span>Continue as Guest</span>
-                            </Button>
-                        </div>
-                    </CardContent>
-                    
-                    <CardFooter className="justify-center p-0 pt-6 mt-6 border-t border-slate-100 dark:border-zinc-900">
-                        <Button 
-                            variant="link" 
-                            onClick={() => {
-                                setError("");
-                                setIsSignUp(!isSignUp);
-                            }}
-                            className="text-xs text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 font-medium transition-colors p-0 h-auto"
-                        >
-                            {isSignUp ? "Already have an account? Sign in" : "New to VPortal? Create account"}
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-
-            {/* Footer */}
-            <div className="z-10 flex justify-between items-center w-full text-xs text-slate-400 dark:text-slate-500 font-sans mt-auto">
-                <span>© VPortal</span>
-                <div className="flex gap-4">
-                    <a href="#" className="hover:underline transition-all">Privacy & terms</a>
                 </div>
             </div>
         </div>
