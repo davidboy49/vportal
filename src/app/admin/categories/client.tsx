@@ -242,39 +242,45 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                     <TableCell className="font-semibold">{cat.sortOrder}</TableCell>
                                     <TableCell className="font-medium">{cat.name}</TableCell>
                                     <TableCell>
-                                        <Switch
-                                            checked={cat.isActive}
-                                            onCheckedChange={async (checked) => {
-                                                if (!user) return;
-                                                // Optimistic client-side state update
-                                                setCategories((current) =>
-                                                    current.map((item) => (item.id === cat.id ? { ...item, isActive: checked } : item))
-                                                );
-                                                try {
-                                                    const token = await user.getIdToken();
-                                                    const data = {
-                                                        name: cat.name,
-                                                        sortOrder: cat.sortOrder,
-                                                        isActive: checked,
-                                                    };
-                                                    const result = await updateCategory(token, cat.id, data);
-                                                    if (!result.success) {
-                                                        // Revert on failure
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={cat.isActive}
+                                                className="data-[state=checked]:bg-zinc-950 dark:data-[state=checked]:bg-zinc-50"
+                                                onCheckedChange={async (checked) => {
+                                                    if (!user) return;
+                                                    // Optimistic client-side state update
+                                                    setCategories((current) =>
+                                                        current.map((item) => (item.id === cat.id ? { ...item, isActive: checked } : item))
+                                                    );
+                                                    try {
+                                                        const token = await user.getIdToken();
+                                                        const data = {
+                                                            name: cat.name,
+                                                            sortOrder: cat.sortOrder,
+                                                            isActive: checked,
+                                                        };
+                                                        const result = await updateCategory(token, cat.id, data);
+                                                        if (!result.success) {
+                                                            // Revert on failure
+                                                            setCategories((current) =>
+                                                                current.map((item) => (item.id === cat.id ? { ...item, isActive: !checked } : item))
+                                                            );
+                                                            alert(result.message || "Failed to toggle status.");
+                                                        }
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        // Revert on error
                                                         setCategories((current) =>
                                                             current.map((item) => (item.id === cat.id ? { ...item, isActive: !checked } : item))
                                                         );
-                                                        alert(result.message || "Failed to toggle status.");
+                                                        alert("Failed to toggle status due to network error.");
                                                     }
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    // Revert on error
-                                                    setCategories((current) =>
-                                                        current.map((item) => (item.id === cat.id ? { ...item, isActive: !checked } : item))
-                                                    );
-                                                    alert("Failed to toggle status due to network error.");
-                                                }
-                                            }}
-                                        />
+                                                }}
+                                            />
+                                            <span className="text-sm font-medium">
+                                                {cat.isActive ? "Active" : "Inactive"}
+                                            </span>
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right space-x-1">
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} disabled={loading} className="h-8 w-8">

@@ -167,6 +167,51 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setIsActive(true);
     };
 
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("File size is too large. Please select an image under 2MB.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const MAX_WIDTH = 128;
+                const MAX_HEIGHT = 128;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL("image/webp", 0.8);
+                    setIconUrl(dataUrl);
+                }
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    };
+
     // Filter Logic
     const filteredApps = useMemo(() => {
         return apps.filter((app) => {
@@ -265,7 +310,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <Label>Icon URL</Label>
+                                        <Label>Icon (URL or Upload)</Label>
                                         {url && (
                                             <button
                                                 type="button"
@@ -292,10 +337,26 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                         <Input 
                                             value={iconUrl} 
                                             onChange={e => setIconUrl(e.target.value)} 
-                                            type="url" 
-                                            placeholder="https://example.com/icon.png"
+                                            type="text" 
+                                            placeholder="https://example.com/icon.png or Base64"
                                             className="flex-1"
                                         />
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                className="hidden"
+                                                id="icon-upload-input"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => document.getElementById("icon-upload-input")?.click()}
+                                            >
+                                                Upload
+                                            </Button>
+                                        </div>
                                         {iconUrl && (
                                             <div className="w-9 h-9 border border-border rounded flex items-center justify-center bg-muted shrink-0 p-1 overflow-hidden">
                                                 <img 
@@ -413,43 +474,49 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Switch
-                                        checked={app.isActive}
-                                        onCheckedChange={async (checked) => {
-                                            if (!user) return;
-                                            // Optimistic client-side state update
-                                            setApps((current) =>
-                                                current.map((item) => (item.id === app.id ? { ...item, isActive: checked } : item))
-                                            );
-                                            try {
-                                                const token = await user.getIdToken();
-                                                const data = {
-                                                    name: app.name,
-                                                    url: app.url,
-                                                    description: app.description || "",
-                                                    iconUrl: app.iconUrl || "",
-                                                    categoryId: app.categoryId,
-                                                    tags: app.tags.join(", "),
-                                                    isActive: checked,
-                                                };
-                                                const result = await updateApp(token, app.id, data);
-                                                if (!result.success) {
-                                                    // Revert on failure
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            checked={app.isActive}
+                                            className="data-[state=checked]:bg-zinc-950 dark:data-[state=checked]:bg-zinc-50"
+                                            onCheckedChange={async (checked) => {
+                                                if (!user) return;
+                                                // Optimistic client-side state update
+                                                setApps((current) =>
+                                                    current.map((item) => (item.id === app.id ? { ...item, isActive: checked } : item))
+                                                );
+                                                try {
+                                                    const token = await user.getIdToken();
+                                                    const data = {
+                                                        name: app.name,
+                                                        url: app.url,
+                                                        description: app.description || "",
+                                                        iconUrl: app.iconUrl || "",
+                                                        categoryId: app.categoryId,
+                                                        tags: app.tags.join(", "),
+                                                        isActive: checked,
+                                                    };
+                                                    const result = await updateApp(token, app.id, data);
+                                                    if (!result.success) {
+                                                        // Revert on failure
+                                                        setApps((current) =>
+                                                            current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
+                                                        );
+                                                        alert(result.message || "Failed to toggle status.");
+                                                    }
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    // Revert on error
                                                     setApps((current) =>
                                                         current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
                                                     );
-                                                    alert(result.message || "Failed to toggle status.");
+                                                    alert("Failed to toggle status due to network error.");
                                                 }
-                                            } catch (e) {
-                                                console.error(e);
-                                                // Revert on error
-                                                setApps((current) =>
-                                                    current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
-                                                );
-                                                alert("Failed to toggle status due to network error.");
-                                            }
-                                        }}
-                                    />
+                                            }}
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {app.isActive ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-right space-x-1">
                                     <Button variant="ghost" size="icon" onClick={() => openEdit(app)} className="h-8 w-8">
