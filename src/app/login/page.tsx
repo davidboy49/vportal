@@ -86,7 +86,7 @@ function BrandLogo() {
         <div className="flex items-center gap-2 select-none">
             <div className="relative w-7 h-7 flex items-center justify-center rounded-lg overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-md">
                 <Image 
-                    src="/vportal_logo.jpg" 
+                    src="/vportal_logo_v2.png" 
                     alt="VPortal Logo" 
                     fill
                     unoptimized
@@ -546,7 +546,7 @@ function LoginForm() {
                     <div className="flex items-center gap-2 select-none bg-white/80 dark:bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/20 shadow-sm">
                         <div className="relative w-5 h-5 flex items-center justify-center rounded-md overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-sm">
                             <Image 
-                                src="/vportal_logo.jpg" 
+                                src="/vportal_logo_v2.png" 
                                 alt="VPortal Logo" 
                                 fill
                                 unoptimized
