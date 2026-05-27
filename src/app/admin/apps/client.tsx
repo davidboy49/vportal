@@ -7,15 +7,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { createApp, updateApp, deleteApp } from "@/actions/apps";
-import { Loader2, Plus, Pencil, Trash2, Download, Search } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
 
 const ITEMS_PER_PAGE = 10;
+
+// Inline toast banner for success/error feedback (replaces alert())
+function StatusBanner({ message, type, onDismiss }: { message: string; type: "success" | "error"; onDismiss: () => void }) {
+    const isSuccess = type === "success";
+    return (
+        <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm animate-in fade-in slide-in-from-top-2 duration-300 ${
+            isSuccess
+                ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-300"
+                : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300"
+        }`}>
+            {isSuccess ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+            <span className="flex-1 font-medium">{message}</span>
+            <button onClick={onDismiss} className="text-current opacity-60 hover:opacity-100 transition-opacity text-xs font-bold">✕</button>
+        </div>
+    );
+}
 
 export function AppsClient({ initialApps, categories }: { initialApps: App[], categories: Category[] }) {
     const { user } = useAuth();
@@ -23,7 +49,17 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [editingApp, setEditingApp] = useState<App | null>(null);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    // Banner feedback state (replaces alert())
+    const [banner, setBanner] = useState<{ message: string; type: "success" | "error" } | null>(null);
+    const showBanner = (message: string, type: "success" | "error" = "error") => setBanner({ message, type });
+
+    // Delete confirmation state (replaces confirm())
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+    // Icon file size warning (replaces alert())
+    const [iconWarning, setIconWarning] = useState<string | null>(null);
+    const [iconUrlWarning, setIconUrlWarning] = useState<string | null>(null);
 
     // Form State
     const [name, setName] = useState("");
@@ -45,14 +81,12 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         if (!user) return;
 
         if (!name.trim() || !url.trim() || !categoryId) {
-            const message = "Missing required fields: Name, URL, and Category are mandatory.";
-            setErrorMessage(message);
-            alert(`Admin alert: ${message}`);
+            showBanner("Missing required fields: Name, URL, and Category are mandatory.", "error");
             return;
         }
 
         setLoading(true);
-        setErrorMessage(null);
+        setBanner(null);
 
         try {
             const token = await user.getIdToken();
@@ -62,16 +96,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 description: desc,
                 iconUrl,
                 categoryId,
-                tags, // Schema transform will handle split
+                tags,
                 isActive
             };
 
             if (editingApp) {
                 const result = await updateApp(token, editingApp.id, data);
                 if (!result.success) {
-                    const message = result.message || "Failed to save app.";
-                    setErrorMessage(message);
-                    alert(`Admin alert: ${message}`);
+                    showBanner(result.message || "Failed to save app.", "error");
                     return;
                 }
 
@@ -87,9 +119,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
             } else {
                 const result = await createApp(token, data);
                 if (!result.success || !result.id) {
-                    const message = result.message || "Failed to save app.";
-                    setErrorMessage(message);
-                    alert(`Admin alert: ${message}`);
+                    showBanner(result.message || "Failed to save app.", "error");
                     return;
                 }
 
@@ -108,39 +138,35 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         updatedAt: new Date().toISOString(),
                     }
                 ]);
+                showBanner("App saved successfully.", "success");
             }
 
             setIsOpen(false);
             resetForm();
         } catch (error) {
-            const message = "Unexpected error while saving app.";
             console.error(error);
-            setErrorMessage(message);
-            alert(`Admin alert: ${message}`);
+            showBanner("Unexpected error while saving app.", "error");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure?")) return;
-        if (!user) return;
+    const handleDeleteConfirmed = async () => {
+        if (!deleteTargetId || !user) { setDeleteTargetId(null); return; }
         try {
             const token = await user.getIdToken();
-            const result = await deleteApp(token, id);
+            const result = await deleteApp(token, deleteTargetId);
             if (!result.success) {
-                const message = result.message || "Failed to delete app.";
-                setErrorMessage(message);
-                alert(`Admin alert: ${message}`);
-                return;
+                showBanner(result.message || "Failed to delete app.", "error");
+            } else {
+                setApps((current) => current.filter((app) => app.id !== deleteTargetId));
+                showBanner("App deleted.", "success");
             }
-
-            setApps((current) => current.filter((app) => app.id !== id));
         } catch (error) {
             console.error(error);
-            const message = "Unexpected error while deleting app.";
-            setErrorMessage(message);
-            alert(`Admin alert: ${message}`);
+            showBanner("Unexpected error while deleting app.", "error");
+        } finally {
+            setDeleteTargetId(null);
         }
     };
 
@@ -165,6 +191,8 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setCategoryId("");
         setTags("");
         setIsActive(true);
+        setIconWarning(null);
+        setIconUrlWarning(null);
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,9 +200,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
-            alert("File size is too large. Please select an image under 2MB.");
+            setIconWarning("File size is too large. Please select an image under 2 MB.");
             return;
         }
+        setIconWarning(null);
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -187,15 +216,9 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 let height = img.height;
 
                 if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
+                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                 } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
+                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                 }
 
                 canvas.width = width;
@@ -220,38 +243,28 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
             const urlMatch = app.url.toLowerCase().includes(searchTerm.toLowerCase());
             const tagsMatch = app.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
             const matchesSearch = nameMatch || descMatch || urlMatch || tagsMatch;
-
             const matchesCategory = categoryFilter === "ALL" || app.categoryId === categoryFilter;
-
-            const matchesStatus = statusFilter === "ALL" || 
-                (statusFilter === "ACTIVE" && app.isActive) || 
+            const matchesStatus = statusFilter === "ALL" ||
+                (statusFilter === "ACTIVE" && app.isActive) ||
                 (statusFilter === "INACTIVE" && !app.isActive);
-
             return matchesSearch && matchesCategory && matchesStatus;
         });
     }, [apps, searchTerm, categoryFilter, statusFilter]);
 
-    // Reset pagination to 1 if filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, categoryFilter, statusFilter]);
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, categoryFilter, statusFilter]);
 
     const totalPages = Math.max(1, Math.ceil(filteredApps.length / ITEMS_PER_PAGE));
-
     const paginatedApps = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         return filteredApps.slice(start, start + ITEMS_PER_PAGE);
     }, [filteredApps, currentPage]);
 
-    // CSV/Excel export handler
     const handleExport = () => {
         const headers = ["ID", "Name", "Category", "URL", "Description", "Tags", "Status"];
         const rows = filteredApps.map(app => [
-            app.id,
-            app.name,
+            app.id, app.name,
             categories.find(c => c.id === app.categoryId)?.name || "Unknown",
-            app.url,
-            app.description || "",
+            app.url, app.description || "",
             app.tags.join(", "),
             app.isActive ? "Active" : "Inactive"
         ]);
@@ -260,6 +273,11 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
 
     return (
         <div className="space-y-6">
+            {/* Status Banner */}
+            {banner && (
+                <StatusBanner message={banner.message} type={banner.type} onDismiss={() => setBanner(null)} />
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold">Apps</h2>
@@ -318,12 +336,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                                     try {
                                                         const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
                                                         setIconUrl(`https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`);
-                                                    } catch (e) {
+                                                        setIconUrlWarning(null);
+                                                    } catch {
                                                         const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
                                                         if (match && match[1]) {
                                                             setIconUrl(`https://www.google.com/s2/favicons?domain=${match[1]}&sz=128`);
+                                                            setIconUrlWarning(null);
                                                         } else {
-                                                            alert("Please enter a valid App URL first.");
+                                                            setIconUrlWarning("Please enter a valid App URL first.");
                                                         }
                                                     }
                                                 }}
@@ -333,11 +353,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                             </button>
                                         )}
                                     </div>
+                                    {iconUrlWarning && (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400">{iconUrlWarning}</p>
+                                    )}
                                     <div className="flex gap-2">
-                                        <Input 
-                                            value={iconUrl} 
-                                            onChange={e => setIconUrl(e.target.value)} 
-                                            type="text" 
+                                        <Input
+                                            value={iconUrl}
+                                            onChange={e => setIconUrl(e.target.value)}
+                                            type="text"
                                             placeholder="https://example.com/icon.png or Base64"
                                             className="flex-1"
                                         />
@@ -359,17 +382,18 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                         </div>
                                         {iconUrl && (
                                             <div className="w-9 h-9 border border-border rounded flex items-center justify-center bg-muted shrink-0 p-1 overflow-hidden">
-                                                <img 
-                                                    src={iconUrl} 
-                                                    alt="Preview" 
-                                                    className="w-full h-full object-contain" 
-                                                    onError={(e) => {
-                                                        (e.target as HTMLElement).style.display = 'none';
-                                                    }} 
+                                                <img
+                                                    src={iconUrl}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-contain"
+                                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                                 />
                                             </div>
                                         )}
                                     </div>
+                                    {iconWarning && (
+                                        <p className="text-xs text-red-500 dark:text-red-400">{iconWarning}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -406,9 +430,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <div className="w-full sm:w-[180px]">
                         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Category: All" />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder="Category: All" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Categories</SelectItem>
                                 {categories.map(c => (
@@ -419,9 +441,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     </div>
                     <div className="w-full sm:w-[150px]">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Status: All" />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder="Status: All" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Status</SelectItem>
                                 <SelectItem value="ACTIVE">Active</SelectItem>
@@ -467,9 +487,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                 <TableCell className="max-w-[150px] truncate">
                                     <div className="flex flex-wrap gap-1">
                                         {app.tags.length > 0 ? app.tags.map((t, idx) => (
-                                            <span key={idx} className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-semibold text-muted-foreground">
-                                                {t}
-                                            </span>
+                                            <span key={idx} className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-semibold text-muted-foreground">{t}</span>
                                         )) : "-"}
                                     </div>
                                 </TableCell>
@@ -480,49 +498,40 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                             className="data-[state=checked]:bg-zinc-950 dark:data-[state=checked]:bg-zinc-50"
                                             onCheckedChange={async (checked) => {
                                                 if (!user) return;
-                                                // Optimistic client-side state update
                                                 setApps((current) =>
                                                     current.map((item) => (item.id === app.id ? { ...item, isActive: checked } : item))
                                                 );
                                                 try {
                                                     const token = await user.getIdToken();
                                                     const data = {
-                                                        name: app.name,
-                                                        url: app.url,
-                                                        description: app.description || "",
-                                                        iconUrl: app.iconUrl || "",
-                                                        categoryId: app.categoryId,
-                                                        tags: app.tags.join(", "),
-                                                        isActive: checked,
+                                                        name: app.name, url: app.url,
+                                                        description: app.description || "", iconUrl: app.iconUrl || "",
+                                                        categoryId: app.categoryId, tags: app.tags.join(", "), isActive: checked,
                                                     };
                                                     const result = await updateApp(token, app.id, data);
                                                     if (!result.success) {
-                                                        // Revert on failure
                                                         setApps((current) =>
                                                             current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
                                                         );
-                                                        alert(result.message || "Failed to toggle status.");
+                                                        showBanner(result.message || "Failed to toggle status.", "error");
                                                     }
                                                 } catch (e) {
                                                     console.error(e);
-                                                    // Revert on error
                                                     setApps((current) =>
                                                         current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
                                                     );
-                                                    alert("Failed to toggle status due to network error.");
+                                                    showBanner("Failed to toggle status due to a network error.", "error");
                                                 }
                                             }}
                                         />
-                                        <span className="text-sm font-medium">
-                                            {app.isActive ? "Active" : "Inactive"}
-                                        </span>
+                                        <span className="text-sm font-medium">{app.isActive ? "Active" : "Inactive"}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right space-x-1">
                                     <Button variant="ghost" size="icon" onClick={() => openEdit(app)} className="h-8 w-8">
                                         <Pencil className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="text-red-500 h-8 w-8" onClick={() => handleDelete(app.id)}>
+                                    <Button variant="ghost" size="icon" className="text-red-500 h-8 w-8" onClick={() => setDeleteTargetId(app.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
@@ -546,32 +555,33 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredApps.length)} of {filteredApps.length} apps
                     </span>
                     <div className="flex items-center space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                        >
-                            Previous
-                        </Button>
-                        <span className="text-xs text-muted-foreground px-2">
-                            Page {currentPage} of {totalPages}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                        >
-                            Next
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>Previous</Button>
+                        <span className="text-xs text-muted-foreground px-2">Page {currentPage} of {totalPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>Next</Button>
                     </div>
                 </div>
             )}
 
-            {errorMessage && (
-                <p className="text-sm text-red-500">{errorMessage}</p>
-            )}
+            {/* Delete Confirmation AlertDialog */}
+            <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete App?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. The app will be permanently removed from VPortal.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirmed}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -104,6 +104,7 @@ function LoginForm() {
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState(() => !auth ? "Firebase Authentication is not initialized. Please verify your environment variables in .env.local." : "");
+    const [infoMessage, setInfoMessage] = useState("");
     const [isSignUp, setIsSignUp] = useState(false);
     const [rememberMe, setRememberMe] = useState(true);
     const router = useRouter();
@@ -443,7 +444,7 @@ function LoginForm() {
                                         href="#" 
                                         onClick={(e) => {
                                             e.preventDefault();
-                                            alert("Password reset is not configured in this Company Portal. Please contact your system administrator.");
+                                            setInfoMessage("Password reset is not available in this portal. Please contact your system administrator.");
                                         }}
                                         className="text-xs text-violet-600 dark:text-violet-400 hover:underline hover:text-violet-700 font-medium transition-all"
                                     >
@@ -483,6 +484,12 @@ function LoginForm() {
                                 {error}
                             </p>
                         )}
+
+                        {infoMessage && (
+                            <p className="text-xs text-blue-700 dark:text-blue-300 font-medium bg-blue-50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/30 px-3 py-2 rounded-lg leading-relaxed">
+                                {infoMessage}
+                            </p>
+                        )}
                         
                         <Button 
                             type="submit" 
@@ -518,7 +525,7 @@ function LoginForm() {
                         <Button 
                             variant="outline" 
                             className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
-                            onClick={() => alert("Passkey enrollment is available from your Profile settings after signing in.")}
+                            onClick={() => setInfoMessage("Passkey enrollment is available from your Profile settings after signing in.")}
                         >
                             <PasskeyIcon />
                             <span>Passkey</span>

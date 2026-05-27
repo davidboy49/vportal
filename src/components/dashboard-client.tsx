@@ -17,6 +17,16 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
 
@@ -59,6 +69,15 @@ export function DashboardClient({
     const [pinError, setPinError] = useState("");
     const [pinSuccess, setPinSuccess] = useState("");
     const [pinLoading, setPinLoading] = useState(false);
+    const [removePinConfirm, setRemovePinConfirm] = useState(false);
+
+    const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
+        setFavorites(prev => {
+            const next = new Set(prev);
+            if (isFav) next.add(id); else next.delete(id);
+            return next;
+        });
+    }, []);
 
     // Sync user details and PIN status to LocalStorage
     useEffect(() => {
@@ -144,9 +163,13 @@ export function DashboardClient({
     const handleRemovePin = async () => {
         setPinError("");
         setPinSuccess("");
-        
         if (!user) return;
-        if (!confirm("Are you sure you want to disable and remove your login PIN?")) return;
+        setRemovePinConfirm(true);
+    };
+
+    const handleRemovePinConfirmed = async () => {
+        setRemovePinConfirm(false);
+        if (!user) return;
 
         setPinLoading(true);
         try {
@@ -380,14 +403,6 @@ export function DashboardClient({
             </div>
         );
     }
-
-    const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
-        setFavorites(prev => {
-            const next = new Set(prev);
-            if (isFav) next.add(id); else next.delete(id);
-            return next;
-        });
-    }, []);
 
     const renderSidebarContent = () => {
         return (
