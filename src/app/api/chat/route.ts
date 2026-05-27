@@ -1,91 +1,121 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { z } from "zod";
+import { FieldValue } from "firebase-admin/firestore";
 
-// In-memory rate limiting store: key is client IP, value is array of request timestamps
-const rateLimitStore = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 30000; // 30 seconds
-const RATE_LIMIT_MAX_REQUESTS = 5; // 5 requests per window
+// ─── Zod Schema Validation ──────────────────────────────────────────────────
+const MessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(2000),
+});
+
+const RequestBodySchema = z.object({
+  messages: z.array(MessageSchema).min(1).max(50),
+  sessionId: z.string().max(128).optional(),
+});
+
+// ─── Persistent Firestore Rate Limiter ──────────────────────────────────────
+const RATE_LIMIT_WINDOW_MS = 30_000; // 30 seconds
+const RATE_LIMIT_MAX_REQUESTS = 5;
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  if (!adminDb) return false; // if db unavailable, allow (fail open)
+
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const ref = adminDb.collection("_rate_limits").doc(`chat_${ip.replace(/[.:]/g, "_")}`);
+
+  try {
+    const result = await adminDb.runTransaction(async (tx) => {
+      const doc = await tx.get(ref);
+      const data = doc.data() as { timestamps?: number[] } | undefined;
+      const timestamps: number[] = (data?.timestamps ?? []).filter(
+        (t: number) => t > windowStart
+      );
+
+      if (timestamps.length >= RATE_LIMIT_MAX_REQUESTS) {
+        return false; // rate limited
+      }
+
+      timestamps.push(now);
+      tx.set(ref, { timestamps, updatedAt: FieldValue.serverTimestamp() });
+      return true; // allowed
+    });
+    return result;
+  } catch {
+    return true; // on error, fail open rather than blocking legitimate users
+  }
+}
 
 export async function POST(req: Request) {
-  let parsedMessages: any[] = [];
+  let parsedMessages: z.infer<typeof MessageSchema>[] = [];
   let sessionId = "unknown-session";
-  
+
   // Resolve client IP
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";
 
-  // Enforce sliding window rate limit
-  const now = Date.now();
-  const userRequests = rateLimitStore.get(ip) || [];
-  const activeRequests = userRequests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW_MS);
-  
-  if (activeRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
-    return NextResponse.json({
-      choices: [
-        {
-          message: {
-            role: "assistant",
-            content: "Whoa, slow down there. 😐 You're talking way too fast for my circuits. Let's take a 30-second breather. 🗿"
-          }
-        }
-      ]
-    }, { status: 429 });
+  // Enforce persistent rate limit
+  const allowed = await checkRateLimit(ip);
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content:
+                "Whoa, slow down there. 😐 You're talking way too fast for my circuits. Let's take a 30-second breather. 🗿",
+            },
+          },
+        ],
+      },
+      { status: 429 }
+    );
   }
 
-  // Record current request timestamp
-  activeRequests.push(now);
-  rateLimitStore.set(ip, activeRequests);
-
   try {
-    const body = await req.json();
-    const { messages, sessionId: bodySessionId } = body;
-    parsedMessages = messages;
-    if (bodySessionId) {
-      sessionId = bodySessionId;
-    }
+    const rawBody = await req.json();
 
-    if (!messages || !Array.isArray(messages)) {
+    // ── Strict schema validation ──────────────────────────────────────────
+    const parseResult = RequestBodySchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const issues = parseResult.error.issues
+        .map((i) => i.message)
+        .join(", ");
       return NextResponse.json(
-        { error: "Invalid request. 'messages' array is required." },
+        { error: `Invalid request: ${issues}` },
         { status: 400 }
       );
     }
 
-    // Propose suspicious use character limit: max 2000 characters per message
-    const hasExcessiveMessage = messages.some((msg: any) => msg.content && msg.content.length > 2000);
-    if (hasExcessiveMessage) {
-      return NextResponse.json({
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: "Wait a minute. 😐 This message is suspiciously long (exceeds 2000 characters). Please send a shorter message. 🗿"
-            }
-          }
-        ]
-      }, { status: 400 });
-    }
+    const { messages, sessionId: bodySessionId } = parseResult.data;
+    parsedMessages = messages;
+    if (bodySessionId) sessionId = bodySessionId;
 
-    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const geminiApiKey =
+      process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-    // If Gemini API Key is missing, guide the developer/user gracefully rather than crashing.
     if (!geminiApiKey) {
-      console.warn("Google Gemini API key (GEMINI_API_KEY) is not set in environment variables.");
+      console.warn(
+        "Google Gemini API key (GEMINI_API_KEY) is not set in environment variables."
+      );
       return NextResponse.json({
         choices: [
           {
             message: {
               role: "assistant",
-              content: "👋 Hello! I am the VPortal Assistant. To enable my AI-powered capabilities, please set the `GEMINI_API_KEY` environment variable in your `.env.local` file with your Google Gemini API key."
-            }
-          }
-        ]
+              content:
+                "👋 Hello! I am the VPortal Assistant. To enable my AI-powered capabilities, please set the `GEMINI_API_KEY` environment variable in your `.env.local` file with your Google Gemini API key.",
+            },
+          },
+        ],
       });
     }
 
-    // Inject system context to guide the assistant
+    // ── System prompt ─────────────────────────────────────────────────────
     const systemPrompt = `You are the official VPortal Virtual Assistant. You have a humorous, playful, and witty personality, but you MUST be extremely stoic when it comes to emojis.
 VPortal is a centralized internal company dashboard for discovering, launching, and managing company apps (like Jira, Slack, GitHub, or custom internal tools).
 
@@ -114,33 +144,23 @@ Content Guidelines:
    - Admin panel (manage apps/categories for Admins).
 4. If the question is completely unrelated to VPortal, business, or technology, politely but briefly guide them back to VPortal.`;
 
-    // Map chat messages to Gemini contents structure (filtering for user/assistant roles)
-    const contents = messages
-      .filter((msg: any) => msg.role === "user" || msg.role === "assistant")
-      .map((msg: any) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }]
-      }));
+    // ── Map messages to Gemini format ─────────────────────────────────────
+    const contents = messages.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
 
-    // Call Google Gemini API (defaulting to gemini-2.5-flash)
+    // ── Call Gemini API ───────────────────────────────────────────────────
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: contents,
-          systemInstruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800,
-          }
+          contents,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
         }),
-        // Add a timeout to prevent hanging forever
         signal: AbortSignal.timeout(15000),
       }
     );
@@ -153,107 +173,97 @@ Content Guidelines:
       replyContent = `⚠️ Google Gemini API Error (Status ${response.status}): ${errorText}`;
     } else {
       const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error.message || JSON.stringify(data.error));
-      }
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
       replyContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
 
-    // Record the conversation log to Firestore
-    const currentUser = await getCurrentUser();
-    if (adminDb) {
-      try {
-        const userId = currentUser ? currentUser.uid : "guest";
-        const userEmail = currentUser ? currentUser.email || "guest@vportal.internal" : "guest@vportal.internal";
-        const userDisplayName = currentUser ? currentUser.name || "Guest User" : "Guest User";
+    // ── Log to Firestore ──────────────────────────────────────────────────
+    await saveChatLog(sessionId, parsedMessages, replyContent, ip);
 
-        await adminDb.collection("chats").doc(sessionId).set({
-          sessionId,
-          userId,
-          userEmail,
-          userDisplayName,
-          messages: parsedMessages.concat([{ role: "assistant", content: replyContent }]),
-          lastMessageAt: new Date().toISOString(),
-          ipAddress: ip,
-        }, { merge: true });
-      } catch (dbError) {
-        console.error("Failed to write chat log to Firestore:", dbError);
-      }
-    }
-
-    // Map back to format expected by ChatWidget frontend
     return NextResponse.json({
-      choices: [
-        {
-          message: {
-            role: "assistant",
-            content: replyContent
-          }
-        }
-      ]
+      choices: [{ message: { role: "assistant", content: replyContent } }],
     });
   } catch (error: unknown) {
     console.error("Chat API error:", error);
-    let errorMessage = error instanceof Error ? error.message : String(error);
-    
-    // Attempt to extract the deep cause of the fetch failure
-    if (error instanceof Error && (error as any).cause) {
-      const cause = (error as any).cause;
+    let errorMessage =
+      error instanceof Error ? error.message : String(error);
+
+    if (error instanceof Error && (error as NodeJS.ErrnoException).cause) {
+      const cause = (error as NodeJS.ErrnoException).cause as { message?: string; code?: string };
       errorMessage += ` | Cause: ${cause.message || cause.code || String(cause)}`;
     }
-    
+
     console.warn("Gemini API call failed, using fallback responder:", errorMessage);
     const fallbackResponse = getLocalFallbackResponse(parsedMessages);
 
-    // Record fallback chat to Firestore
-    const currentUser = await getCurrentUser();
-    if (adminDb) {
-      try {
-        const userId = currentUser ? currentUser.uid : "guest";
-        const userEmail = currentUser ? currentUser.email || "guest@vportal.internal" : "guest@vportal.internal";
-        const userDisplayName = currentUser ? currentUser.name || "Guest User" : "Guest User";
-
-        await adminDb.collection("chats").doc(sessionId).set({
-          sessionId,
-          userId,
-          userEmail,
-          userDisplayName,
-          messages: parsedMessages.concat([{ role: "assistant", content: fallbackResponse }]),
-          lastMessageAt: new Date().toISOString(),
-          ipAddress: ip,
-        }, { merge: true });
-      } catch (dbError) {
-        console.error("Failed to write fallback chat log to Firestore:", dbError);
-      }
-    }
+    await saveChatLog(sessionId, parsedMessages, fallbackResponse, ip);
 
     return NextResponse.json({
-      choices: [
-        {
-          message: {
-            role: "assistant",
-            content: fallbackResponse
-          }
-        }
-      ]
+      choices: [{ message: { role: "assistant", content: fallbackResponse } }],
     });
   }
 }
 
-function getLocalFallbackResponse(messages: { role: string; content: string }[]): string {
-  const userMessages = messages.filter(m => m.role === "user");
+// ─── Shared Firestore Chat Logger ────────────────────────────────────────────
+async function saveChatLog(
+  sessionId: string,
+  messages: z.infer<typeof MessageSchema>[],
+  replyContent: string,
+  ip: string
+) {
+  if (!adminDb) return;
+  try {
+    const currentUser = await getCurrentUser();
+    const userId = currentUser?.uid ?? "guest";
+    const userEmail = currentUser?.email ?? "guest@vportal.internal";
+    const userDisplayName = currentUser?.name ?? "Guest User";
+
+    await adminDb
+      .collection("chats")
+      .doc(sessionId)
+      .set(
+        {
+          sessionId,
+          userId,
+          userEmail,
+          userDisplayName,
+          messages: messages.concat([{ role: "assistant", content: replyContent }]),
+          lastMessageAt: new Date().toISOString(),
+          ipAddress: ip,
+        },
+        { merge: true }
+      );
+  } catch (dbError) {
+    console.error("Failed to write chat log to Firestore:", dbError);
+  }
+}
+
+// ─── Local Fallback ───────────────────────────────────────────────────────────
+function getLocalFallbackResponse(
+  messages: z.infer<typeof MessageSchema>[]
+): string {
+  const userMessages = messages.filter((m) => m.role === "user");
   const lastUserMessage = userMessages[userMessages.length - 1]?.content || "";
   const query = lastUserMessage.toLowerCase();
-  
+
   if (query.includes("what is vportal") || query.includes("vportal")) {
     return "VPortal is a centralized company dashboard for organizing apps, mastermind-designed by the legend Mr. David SIN. 😐 Search, filter, and save apps. 🗿";
   }
-  if (query.includes("sign in") || query.includes("log in") || query.includes("login") || query.includes("signup") || query.includes("guest")) {
+  if (
+    query.includes("sign in") ||
+    query.includes("log in") ||
+    query.includes("login") ||
+    query.includes("signup") ||
+    query.includes("guest")
+  ) {
     return "Sign up with password, sign in with Google, or click 'Continue as Guest' to view the public applications. 😐 Pretty simple. 🗿";
   }
-  if (query.includes("apps") || query.includes("categories") || query.includes("hosted")) {
+  if (
+    query.includes("apps") ||
+    query.includes("categories") ||
+    query.includes("hosted")
+  ) {
     return "VPortal hosts apps like Jira, Slack, and GitHub. Admins manage them. 😐 What else do you need? 🗿";
   }
   return "👋 VPortal Assistant here in offline mode. 😐 GEMINI_API_KEY is not responding, but I'm keeping a straight face. 🗿";
 }
-

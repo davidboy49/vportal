@@ -23,6 +23,16 @@ service cloud.firestore {
       }
     }
     
+    // Chat logs: server-only via Admin SDK — block all client access
+    match /chats/{document=**} {
+      allow read, write: if false;
+    }
+
+    // Rate limit counters: server-only
+    match /_rate_limits/{document=**} {
+      allow read, write: if false;
+    }
+
     // Admin fallback
     match /{document=**} {
     	allow read, write: if request.auth != null && request.auth.token.role == 'ADMIN';

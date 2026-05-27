@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -352,11 +352,42 @@ export function DashboardClient({
                         <p className="text-sm">Cloud Firestore could not be initialized. Please check your Firebase configuration in your <code>.env.local</code> file.</p>
                     </div>
                 ) : (
-                    "Loading..."
+                    <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+                        <div className="relative flex h-16 w-16 items-center justify-center">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400/20 animate-ping" />
+                            <Image
+                                src={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
+                                alt="VPortal"
+                                width={40}
+                                height={40}
+                                unoptimized
+                                className="relative z-10 w-10 h-10 rounded-lg object-cover border border-black/5 dark:border-white/5"
+                            />
+                        </div>
+                        <div className="text-center space-y-1">
+                            <p className="text-sm font-bold text-foreground/80 font-outfit tracking-wide">
+                                {globalSettings?.portalName || "VPortal"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Loading your workspace...</p>
+                        </div>
+                        <div className="flex gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce" />
+                        </div>
+                    </div>
                 )}
             </div>
         );
     }
+
+    const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
+        setFavorites(prev => {
+            const next = new Set(prev);
+            if (isFav) next.add(id); else next.delete(id);
+            return next;
+        });
+    }, []);
 
     const renderSidebarContent = () => {
         return (
@@ -668,11 +699,7 @@ export function DashboardClient({
                             {favoriteApps.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {favoriteApps.map(app => (
-                                        <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={(id, isFav) => {
-                                            const next = new Set(favorites);
-                                            if (isFav) next.add(id); else next.delete(id);
-                                            setFavorites(next);
-                                        }} />
+                                        <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={handleToggleFavorite} />
                                     ))}
                                 </div>
                             ) : (
@@ -694,11 +721,7 @@ export function DashboardClient({
                                             key={app.id}
                                             app={app}
                                             isFavorite={favorites.has(app.id)}
-                                            onToggleFavorite={(id, isFav) => {
-                                                const next = new Set(favorites);
-                                                if (isFav) next.add(id); else next.delete(id);
-                                                setFavorites(next);
-                                            }}
+                                            onToggleFavorite={handleToggleFavorite}
                                         />
                                     ))}
                                 </div>
@@ -725,11 +748,7 @@ export function DashboardClient({
                                                 key={app.id}
                                                 app={app}
                                                 isFavorite={favorites.has(app.id)}
-                                                onToggleFavorite={(id, isFav) => {
-                                                    const next = new Set(favorites);
-                                                    if (isFav) next.add(id); else next.delete(id);
-                                                    setFavorites(next);
-                                                }}
+                                                onToggleFavorite={handleToggleFavorite}
                                             />
                                         ))}
                                         {filteredApps.length === 0 && (
@@ -745,11 +764,7 @@ export function DashboardClient({
                                             <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">Favorites</h2>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                                 {favoriteApps.map(app => (
-                                                    <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={(id, isFav) => {
-                                                        const next = new Set(favorites);
-                                                        if (isFav) next.add(id); else next.delete(id);
-                                                        setFavorites(next);
-                                                    }} />
+                                                    <AppCard key={app.id} app={app} isFavorite={true} onToggleFavorite={handleToggleFavorite} />
                                                 ))}
                                             </div>
                                         </section>
@@ -765,11 +780,7 @@ export function DashboardClient({
                                                         key={app.id}
                                                         app={app}
                                                         isFavorite={favorites.has(app.id)}
-                                                        onToggleFavorite={(id, isFav) => {
-                                                            const next = new Set(favorites);
-                                                            if (isFav) next.add(id); else next.delete(id);
-                                                            setFavorites(next);
-                                                        }}
+                                                        onToggleFavorite={handleToggleFavorite}
                                                     />
                                                 ))}
                                             </div>
@@ -785,11 +796,7 @@ export function DashboardClient({
                                                     key={app.id}
                                                     app={app}
                                                     isFavorite={favorites.has(app.id)}
-                                                    onToggleFavorite={(id, isFav) => {
-                                                        const next = new Set(favorites);
-                                                        if (isFav) next.add(id); else next.delete(id);
-                                                        setFavorites(next);
-                                                    }}
+                                                    onToggleFavorite={handleToggleFavorite}
                                                 />
                                             ))}
                                             {filteredApps.length === 0 && (
