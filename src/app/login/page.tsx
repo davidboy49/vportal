@@ -129,34 +129,20 @@ function LoginForm() {
 
     // Landscape images for multi-picture transitions
     const backgroundImages = [
-        "/login_hero_image.jpg",
-        "/rice_paddies_drone.jpg",
-        "/temple_sunrise.jpg",
-        "/misty_valley.jpg"
+        "/slideshow/login_hero_image.jpg",
+        "/slideshow/rice_paddies_drone.jpg",
+        "/slideshow/temple_sunrise.jpg",
+        "/slideshow/misty_valley.jpg"
     ];
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [prevImageIndex, setPrevImageIndex] = useState<number | null>(null);
 
-    // Rotate images every 6 seconds
+    // Rotate images every 15 seconds
     useEffect(() => {
         const interval = setInterval(() => {
-            setCurrentImageIndex((prev) => {
-                setPrevImageIndex(prev);
-                return (prev + 1) % backgroundImages.length;
-            });
-        }, 6000);
+            setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+        }, 15000);
         return () => clearInterval(interval);
     }, [backgroundImages.length]);
-
-    // Clear previous image after transition opacity completes (1.5s transition + padding)
-    useEffect(() => {
-        if (prevImageIndex !== null) {
-            const timer = setTimeout(() => {
-                setPrevImageIndex(null);
-            }, 1600);
-            return () => clearTimeout(timer);
-        }
-    }, [prevImageIndex]);
 
 
     // Read last user and PIN status on mount
@@ -572,32 +558,28 @@ function LoginForm() {
                     </div>
                 </div>
 
-                {/* Scaling Image Container (completely clean with GPU-accelerated CSS breathing zoom) */}
-                <div className="absolute inset-0 w-full h-full overflow-hidden">
-                    {backgroundImages.map((src, index) => {
-                        const isActive = index === currentImageIndex;
-                        const isPrev = index === prevImageIndex;
-                        const isVisible = isActive || isPrev;
-
-                        return (
+                {/* Swipe Transition Image Container */}
+                <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-900">
+                    <div 
+                        className="flex h-full w-full transition-transform duration-1000 ease-in-out"
+                        style={{
+                            transform: `translateX(-${currentImageIndex * 100}%)`,
+                            willChange: "transform"
+                        }}
+                    >
+                        {backgroundImages.map((src, index) => (
                             <div
                                 key={src}
-                                className="absolute inset-0 w-full h-full"
-                                style={{
-                                    opacity: isActive ? 1 : 0,
-                                    zIndex: isActive ? 10 : 0,
-                                    transition: "opacity 1.5s ease-in-out",
-                                    display: isVisible ? "block" : "none",
-                                }}
+                                className="w-full h-full flex-shrink-0 relative"
                             >
                                 <img
                                     src={src}
                                     alt={`Landscape ${index + 1}`}
-                                    className="w-full h-full object-cover animate-ken-burns"
+                                    className="w-full h-full object-cover"
                                 />
                             </div>
-                        );
-                    })}
+                        ))}
+                    </div>
                     <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none z-10" />
                 </div>
             </div>
