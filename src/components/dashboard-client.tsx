@@ -340,16 +340,14 @@ export function DashboardClient({
             <div className="flex flex-col h-full text-card-foreground">
                 {/* Brand / Logo */}
                 <div className="flex items-center gap-3 px-6 py-5 border-b border-black/5 dark:border-white/5 shrink-0">
-                    {globalSettings?.logoUrl && (
-                        <Image
-                            src={globalSettings.logoUrl}
-                            alt={globalSettings.portalName || "Portal Logo"}
-                            width={32}
-                            height={32}
-                            unoptimized
-                            className="w-8 h-8 rounded-md object-contain border border-black/5 dark:border-white/5 p-1 bg-white/50 dark:bg-black/20"
-                        />
-                    )}
+                    <Image
+                        src={globalSettings?.logoUrl || "/vportal_logo.jpg"}
+                        alt={globalSettings?.portalName || "VPortal Logo"}
+                        width={32}
+                        height={32}
+                        unoptimized
+                        className="w-8 h-8 rounded-md object-cover border border-black/5 dark:border-white/5 p-0.5 bg-white/50 dark:bg-black/20"
+                    />
                     <span className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-white font-outfit select-none">
                         {globalSettings?.portalName || "VPortal"}
                     </span>

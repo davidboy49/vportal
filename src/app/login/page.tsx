@@ -84,14 +84,13 @@ function StripeGradientBackground() {
 function BrandLogo() {
     return (
         <div className="flex items-center gap-2 select-none">
-            <div className="relative w-7 h-7 flex items-center justify-center bg-violet-600 dark:bg-violet-500 rounded-lg shadow-md shadow-violet-500/20">
+            <div className="relative w-7 h-7 flex items-center justify-center rounded-lg overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-md">
                 <Image 
-                    src="/Screenshot_2.png" 
+                    src="/vportal_logo.jpg" 
                     alt="VPortal Logo" 
-                    width={20} 
-                    height={20} 
+                    fill
                     unoptimized
-                    className="w-5 h-5 object-contain invert brightness-0"
+                    className="object-cover"
                 />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-outfit">
@@ -136,13 +135,16 @@ function LoginForm() {
     ];
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
     // Rotate images every 15 seconds
     useEffect(() => {
+        if (!isAutoPlaying) return;
         const interval = setInterval(() => {
             setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
         }, 15000);
         return () => clearInterval(interval);
-    }, [backgroundImages.length]);
+    }, [backgroundImages.length, isAutoPlaying]);
 
 
     // Read last user and PIN status on mount
@@ -542,14 +544,13 @@ function LoginForm() {
                 {/* Logo Overlay on Left Image for Desktop */}
                 <div className="absolute top-6 left-6 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 select-none bg-white/80 dark:bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/20 shadow-sm">
-                        <div className="relative w-5 h-5 flex items-center justify-center bg-violet-600 rounded-md">
+                        <div className="relative w-5 h-5 flex items-center justify-center rounded-md overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-sm">
                             <Image 
-                                src="/Screenshot_2.png" 
+                                src="/vportal_logo.jpg" 
                                 alt="VPortal Logo" 
-                                width={14} 
-                                height={14} 
+                                fill
                                 unoptimized
-                                className="w-3.5 h-3.5 object-contain invert brightness-0"
+                                className="object-cover"
                             />
                         </div>
                         <span className="text-sm font-bold tracking-tight text-slate-900 dark:text-white font-outfit">
@@ -585,6 +586,85 @@ function LoginForm() {
                         ))}
                     </div>
                     <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none z-10" />
+                </div>
+
+                {/* Manual Image Slider Controls at the Bottom */}
+                <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4">
+                    {/* Glassmorphic Control Panel */}
+                    <div className="flex items-center gap-3.5 px-4.5 py-2 rounded-full bg-white/10 dark:bg-black/35 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg transition-all hover:bg-white/15 dark:hover:bg-black/45 animate-in fade-in slide-in-from-bottom duration-500">
+                        {/* Previous Slide Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsAutoPlaying(false);
+                                setCurrentImageIndex((prev) => (prev - 1 + backgroundImages.length) % backgroundImages.length);
+                            }}
+                            className="text-white hover:text-sky-300 transition-colors p-1 rounded-full hover:bg-white/10 active:scale-95"
+                            title="Previous Image"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+
+                        {/* Slide Dot Indicators */}
+                        <div className="flex gap-2 items-center">
+                            {backgroundImages.map((_, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => {
+                                        setIsAutoPlaying(false);
+                                        setCurrentImageIndex(index);
+                                    }}
+                                    className={cn(
+                                        "w-2 h-2 rounded-full transition-all duration-300",
+                                        currentImageIndex === index 
+                                            ? "bg-white scale-125 shadow-md shadow-white/50 w-4.5" 
+                                            : "bg-white/40 hover:bg-white/70"
+                                    )}
+                                    title={`Go to Slide ${index + 1}`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Next Slide Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsAutoPlaying(false);
+                                setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+                            }}
+                            className="text-white hover:text-sky-300 transition-colors p-1 rounded-full hover:bg-white/10 active:scale-95"
+                            title="Next Image"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Autoplay Play/Pause Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsAutoPlaying(prev => !prev)}
+                        className="text-[10px] text-white/70 hover:text-white transition-colors flex items-center gap-1.5 bg-black/35 hover:bg-black/45 px-2.5 py-1 rounded-full border border-white/5 backdrop-blur-xs select-none shadow-xs transition-all duration-300 hover:scale-105"
+                    >
+                        {isAutoPlaying ? (
+                            <>
+                                <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                </span>
+                                <span className="font-medium tracking-wide">Auto-rotate On</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="inline-flex rounded-full h-1.5 w-1.5 bg-amber-400"></span>
+                                <span className="font-medium tracking-wide">Auto-rotate Off</span>
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 

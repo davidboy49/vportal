@@ -9,7 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const figtree = Figtree({subsets:['latin'],variable:'--font-sans'});
 
-const VPORTAL_ICON_DATA_URI = "/Screenshot_2.png";
+const VPORTAL_ICON_DATA_URI = "/vportal_logo.jpg";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
