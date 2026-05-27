@@ -15,6 +15,7 @@ import {
   Users,
   History,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -39,6 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { href: "/admin/categories", label: "Categories", icon: FolderOpen },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/changelog", label: "Change Logs", icon: History },
+    { href: "/admin/chats", label: "Chat Logs", icon: MessageSquare },
     { href: "/admin/settings", label: "Portal Settings", icon: Settings },
   ];
 

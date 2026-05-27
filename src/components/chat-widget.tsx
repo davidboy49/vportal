@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { MessageSquare, X, Send, Sparkles, RefreshCw, Bot, AlertTriangle } from "lucide-react";
+import { X, Send, Sparkles, RefreshCw, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -115,25 +116,34 @@ function renderFormattedMessage(content: string) {
 }
 
 export function ChatWidget() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasPromptedSetup, setHasPromptedSetup] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load messages from sessionStorage on client load
+  // Initialize or fetch session ID and load messages
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("vportal_chat_history");
-      if (stored) {
-        setMessages(JSON.parse(stored));
+      let storedSess = sessionStorage.getItem("vportal_chat_session_id");
+      if (!storedSess) {
+        storedSess = crypto.randomUUID();
+        sessionStorage.setItem("vportal_chat_session_id", storedSess);
+      }
+      setSessionId(storedSess);
+
+      const storedHistory = sessionStorage.getItem("vportal_chat_history");
+      if (storedHistory) {
+        setMessages(JSON.parse(storedHistory));
       }
     } catch (e) {
-      console.error("Failed to load chat history", e);
+      console.error("Failed to initialize session or load history", e);
     }
   }, []);
 
@@ -181,16 +191,47 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          headers["Authorization"] = `Bearer ${token}`;
+        } catch (tokenErr) {
+          console.error("Failed to retrieve auth token", tokenErr);
+        }
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages: newMessages }),
+        headers,
+        body: JSON.stringify({ 
+          messages: newMessages,
+          sessionId: sessionId || "local-session"
+        }),
       });
 
+      // Handle rate limit (429 status code) or size errors explicitly in the dialogue bubble
+      if (response.status === 429) {
+        const errorData = await response.json();
+        const msg = errorData?.choices?.[0]?.message?.content || "Too many requests. Please slow down. 😐";
+        setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+        let errMsg = `API error: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData?.choices?.[0]?.message?.content) {
+            errMsg = errorData.choices[0].message.content;
+          } else if (errorData?.error) {
+            errMsg = errorData.error;
+          }
+        } catch {}
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
@@ -209,13 +250,13 @@ export function ChatWidget() {
       } else {
         throw new Error("Invalid response format from server");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "❌ Connection error. Please verify that the server is active and the GEMINI_API_KEY has been set.",
+          content: `❌ ${error.message || "Connection error. Please verify that the server is active and the GEMINI_API_KEY has been set."}`,
         },
       ]);
     } finally {
@@ -231,6 +272,13 @@ export function ChatWidget() {
   const handleConfirmClear = () => {
     setMessages([]);
     sessionStorage.removeItem("vportal_chat_history");
+    try {
+      const newSess = crypto.randomUUID();
+      sessionStorage.setItem("vportal_chat_session_id", newSess);
+      setSessionId(newSess);
+    } catch (e) {
+      console.error("Failed to generate new session ID", e);
+    }
     setHasPromptedSetup(false);
     setShowConfirmModal(false);
   };
@@ -274,15 +322,15 @@ export function ChatWidget() {
           )}
 
           {/* Header */}
-          <div className="flex items-center justify-between bg-indigo-600 px-4 py-4 text-white dark:bg-indigo-700 shadow-sm">
+          <div className="flex items-center justify-between bg-blue-600 px-4 py-4 text-white dark:bg-blue-700 shadow-sm">
             <div className="flex items-center space-x-3">
               <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-                <Bot className="h-5 w-5 text-white animate-pulse" />
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-indigo-600 bg-emerald-400"></span>
+                <img src="/chatbot_icon.png" alt="Bot avatar" className="h-7 w-7 object-contain rounded-full" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-blue-600 bg-emerald-400"></span>
               </div>
               <div>
-                <h3 className="font-semibold text-base leading-tight">VPortal Assistant</h3>
-                <p className="text-[11px] text-indigo-100 font-medium">Powered by Google Gemini AI</p>
+                <h3 className="font-semibold text-base leading-tight font-outfit">VPortal Assistant</h3>
+                <p className="text-[11px] text-blue-100 font-medium">Powered by Google Gemini AI</p>
               </div>
             </div>
             
@@ -290,7 +338,7 @@ export function ChatWidget() {
               {messages.length > 0 && (
                 <button
                   onClick={() => setShowConfirmModal(true)}
-                  className="rounded-lg p-1.5 text-indigo-100 transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded-lg p-1.5 text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
                   title="Clear chat"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -298,7 +346,7 @@ export function ChatWidget() {
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1.5 text-indigo-100 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-1.5 text-blue-100 transition-colors hover:bg-white/10 hover:text-white"
                 title="Close chat"
               >
                 <X className="h-4.5 w-4.5" />
@@ -310,8 +358,8 @@ export function ChatWidget() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col justify-center space-y-5 text-center px-3 py-4">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 dark:bg-zinc-900/60 shadow-inner">
-                  <Sparkles className="h-7 w-7 text-indigo-500 dark:text-indigo-400 animate-pulse" />
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 dark:bg-zinc-900/60 shadow-inner">
+                  <Sparkles className="h-7 w-7 text-blue-500 dark:text-blue-400 animate-pulse" />
                 </div>
                 <div className="space-y-1.5">
                   <h4 className="font-bold text-lg text-zinc-800 dark:text-zinc-100">How can I help you today?</h4>
@@ -325,7 +373,7 @@ export function ChatWidget() {
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(prompt)}
-                      className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3 text-left text-xs font-semibold text-zinc-650 transition-all hover:bg-indigo-50/60 hover:border-indigo-300 hover:text-indigo-600 dark:border-zinc-850/40 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 shadow-sm active:scale-[0.98]"
+                      className="rounded-xl border border-zinc-200/80 bg-zinc-50/40 p-3 text-left text-xs font-semibold text-zinc-650 transition-all hover:bg-blue-50/60 hover:border-blue-300 hover:text-blue-600 dark:border-zinc-850/40 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200 shadow-sm active:scale-[0.98]"
                     >
                       {prompt}
                     </button>
@@ -343,15 +391,15 @@ export function ChatWidget() {
                     >
                       <div className={`flex max-w-[88%] items-start space-x-2 ${isUser ? "flex-row-reverse space-x-reverse" : "flex-row"}`}>
                         {!isUser && (
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm animate-in zoom-in-50 duration-200">
-                            🤖
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-sm shadow-sm animate-in zoom-in-50 duration-200">
+                            <img src="/chatbot_icon.png" alt="Bot avatar" className="h-5 w-5 object-contain rounded-full" />
                           </div>
                         )}
                         <div
                           className={`rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
                             isUser
-                              ? "bg-indigo-600 text-white font-medium rounded-tr-none dark:bg-indigo-650"
-                              : "bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-855 dark:text-zinc-100 rounded-tl-none border border-zinc-200/60 dark:border-zinc-800/40"
+                              ? "bg-blue-600 text-white font-medium rounded-tr-none dark:bg-blue-750"
+                              : "bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-850 dark:text-zinc-100 rounded-tl-none border border-zinc-200/60 dark:border-zinc-800/40"
                           }`}
                         >
                           <div className="select-text">
@@ -366,8 +414,8 @@ export function ChatWidget() {
                 {isLoading && (
                   <div className="flex w-full justify-start animate-in fade-in duration-200">
                     <div className="flex items-start space-x-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-855 text-indigo-500 dark:text-indigo-400 text-sm shadow-sm">
-                        🤖
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-855 text-sm shadow-sm">
+                        <img src="/chatbot_icon.png" alt="Bot avatar" className="h-5 w-5 object-contain rounded-full" />
                       </div>
                       <div className="rounded-2xl rounded-tl-none bg-zinc-100/90 dark:bg-zinc-900/90 px-4.5 py-3.5 border border-zinc-200/60 dark:border-zinc-800/40 shadow-sm">
                         <div className="flex space-x-1.5 items-center justify-center h-2 w-9">
@@ -402,12 +450,12 @@ export function ChatWidget() {
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask me something..."
                 disabled={isLoading}
-                className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 text-sm outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-100 dark:focus:border-indigo-400 dark:focus:bg-zinc-900 disabled:opacity-50"
+                className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-2.5 text-sm outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500/20 dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-100 dark:focus:border-blue-400 dark:focus:bg-zinc-900 disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={isLoading || !inputValue.trim()}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-all hover:bg-indigo-550 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:bg-zinc-250 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:opacity-80 shrink-0"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 active:scale-95 disabled:bg-zinc-250 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:opacity-80 shrink-0"
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -420,7 +468,7 @@ export function ChatWidget() {
       <button
         id="chat-fab-btn"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-transform duration-300 hover:scale-107 hover:shadow-xl active:scale-95 focus:outline-none ring-4 ring-indigo-550/10 dark:ring-indigo-400/5 dark:bg-indigo-700"
+        className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-transform duration-300 hover:scale-107 hover:shadow-xl active:scale-95 focus:outline-none ring-4 ring-blue-500/10 dark:ring-blue-400/5 dark:bg-blue-700"
         title="Open VPortal Support Chat"
       >
         <span className="relative flex h-full w-full items-center justify-center">
@@ -428,11 +476,11 @@ export function ChatWidget() {
             <X className="h-6 w-6 transform-gpu transition-all duration-300 rotate-90" />
           ) : (
             <>
-              <MessageSquare className="h-6 w-6 transform-gpu transition-all duration-300 hover:rotate-6" />
+              <img src="/chatbot_icon.png" alt="Chat" className="h-9 w-9 object-contain rounded-full transform-gpu transition-all duration-300 hover:rotate-6" />
               {messages.length === 0 && (
                 <span className="absolute top-0.5 right-0.5 flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-indigo-500"></span>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-blue-500"></span>
                 </span>
               )}
             </>

@@ -81,7 +81,6 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-
                 <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
                     <CardHeader>
                         <CardTitle>Change Logs</CardTitle>
@@ -90,6 +89,18 @@ export default function AdminDashboard() {
                     <CardContent>
                         <Button asChild className="w-full">
                             <Link href="/admin/changelog">View Change Logs</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                <Card className="transform-gpu transition-all duration-300 ease-out motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.01] motion-safe:hover:shadow-xl">
+                    <CardHeader>
+                        <CardTitle>Chat Logs</CardTitle>
+                        <CardDescription>Review conversations with the VPortal chatbot.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild className="w-full">
+                            <Link href="/admin/chats">View Chat Logs</Link>
                         </Button>
                     </CardContent>
                 </Card>
