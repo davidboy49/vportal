@@ -127,6 +127,23 @@ function LoginForm() {
 
     const redirectUrl = searchParams.get("redirect") || "/";
 
+    // Landscape images for multi-picture transitions
+    const backgroundImages = [
+        "/login_hero_image.jpg",
+        "/rice_paddies_drone.png",
+        "/temple_sunrise.png",
+        "/misty_valley.png"
+    ];
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    // Rotate images every 6 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+        }, 6000);
+        return () => clearInterval(interval);
+    }, [backgroundImages.length]);
+
 
     // Read last user and PIN status on mount
     useEffect(() => {
@@ -543,12 +560,24 @@ function LoginForm() {
 
                 {/* Scaling Image Container (completely clean with GPU-accelerated CSS breathing zoom) */}
                 <div className="absolute inset-0 w-full h-full overflow-hidden">
-                    <img
-                        src="/login_hero_image.jpg"
-                        alt="Historic Temple"
-                        className="w-full h-full object-cover animate-ken-burns"
-                    />
-                    <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none" />
+                    {backgroundImages.map((src, index) => (
+                        <div
+                            key={src}
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                                opacity: index === currentImageIndex ? 1 : 0,
+                                zIndex: index === currentImageIndex ? 10 : 0,
+                                transition: "opacity 1.5s ease-in-out",
+                            }}
+                        >
+                            <img
+                                src={src}
+                                alt={`Landscape ${index + 1}`}
+                                className="w-full h-full object-cover animate-ken-burns"
+                            />
+                        </div>
+                    ))}
+                    <div className="absolute inset-0 bg-black/5 dark:bg-black/20 pointer-events-none z-10" />
                 </div>
             </div>
 
