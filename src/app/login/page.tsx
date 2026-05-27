@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInAnonymously } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInAnonymously, signInWithCustomToken } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 function LoginForm() {
     const [identifier, setIdentifier] = useState("");
@@ -19,11 +23,54 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const { user } = useAuth();
 
+    // PIN Login States
+    const [lastUser, setLastUser] = useState<{
+        uid: string;
+        email: string | null;
+        displayName: string | null;
+        photoURL: string | null;
+        pinEnabled: boolean;
+    } | null>(null);
+    const [showPinInput, setShowPinInput] = useState(false);
+    const [pin, setPin] = useState("");
+    const [pinError, setPinError] = useState("");
+    const [pinLoading, setPinLoading] = useState(false);
+
     const redirectUrl = searchParams.get("redirect") || "/";
 
+    // Read last user and PIN status on mount
+    useEffect(() => {
+        try {
+            const stored = window.localStorage.getItem("vportal-last-user");
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                setLastUser(parsed);
+                if (parsed.pinEnabled) {
+                    setShowPinInput(true);
+                }
+            }
+        } catch (err) {
+            console.error("Error reading last user from LocalStorage:", err);
+        }
+    }, []);
+
+    // Redirect and save user details after successful login
     useEffect(() => {
         if (user) {
-            router.push(redirectUrl);
+            checkUserPinStatus(user.uid).then((res) => {
+                const lastUserInfo = {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: user.photoURL,
+                    pinEnabled: res.success ? res.pinEnabled : false
+                };
+                window.localStorage.setItem("vportal-last-user", JSON.stringify(lastUserInfo));
+            }).catch((err) => {
+                console.error("Error checking PIN status after login:", err);
+            }).finally(() => {
+                router.push(redirectUrl);
+            });
         }
     }, [user, router, redirectUrl]);
 
@@ -79,6 +126,159 @@ function LoginForm() {
             setError(err instanceof Error ? err.message : "An unexpected error occurred");
         }
     };
+
+    const handleKeyPress = (num: string) => {
+        if (pinLoading) return;
+        setPinError("");
+        const newPin = pin + num;
+        if (newPin.length <= 4) {
+            setPin(newPin);
+        }
+    };
+
+    const handleDelete = () => {
+        if (pinLoading) return;
+        setPinError("");
+        setPin(pin.slice(0, -1));
+    };
+
+    const handleClear = () => {
+        if (pinLoading) return;
+        setPinError("");
+        setPin("");
+    };
+
+    // Trigger PIN verification when PIN reaches 4 digits
+    useEffect(() => {
+        if (pin.length === 4 && lastUser) {
+            const verify = async () => {
+                setPinLoading(true);
+                setPinError("");
+                try {
+                    const res = await verifyPinAndCreateToken(lastUser.uid, pin);
+                    if (res.success && res.customToken) {
+                        await signInWithCustomToken(auth, res.customToken);
+                    } else {
+                        setPinError(res.message || "Failed to verify PIN");
+                        setPin("");
+                    }
+                } catch (err) {
+                    console.error("PIN verification error:", err);
+                    setPinError("An error occurred during verification.");
+                    setPin("");
+                } finally {
+                    setPinLoading(false);
+                }
+            };
+            verify();
+        }
+    }, [pin, lastUser]);
+
+    if (showPinInput && lastUser) {
+        return (
+            <div className="flex min-h-screen w-full items-center justify-center px-4 py-8">
+                <Card className="w-full max-w-md transform-gpu transition-all duration-300 ease-out border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl p-6 bg-white/70 dark:bg-black/40 backdrop-blur-xl">
+                    <CardHeader className="text-center pb-4">
+                        <div className="flex justify-center mb-4">
+                            {lastUser.photoURL ? (
+                                <Image
+                                    src={lastUser.photoURL}
+                                    alt={lastUser.displayName || "User Avatar"}
+                                    width={80}
+                                    height={80}
+                                    className="w-20 h-20 rounded-full border-2 border-blue-500 shadow-lg object-cover"
+                                />
+                            ) : (
+                                <div className="w-20 h-20 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-2xl uppercase border-2 border-blue-500/20 shadow-md">
+                                    {lastUser.email ? lastUser.email.slice(0, 2) : "U"}
+                                </div>
+                            )}
+                        </div>
+                        <CardTitle className="text-2xl font-bold font-outfit text-foreground/90">
+                            Welcome back, {lastUser.displayName || lastUser.email?.split("@")[0] || "User"}
+                        </CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground mt-1">
+                            Enter your 4-digit Quick Login PIN
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="flex justify-center gap-6 py-2">
+                            {[0, 1, 2, 3].map((index) => (
+                                <div
+                                    key={index}
+                                    className={cn(
+                                        "w-4 h-4 rounded-full border-2 transition-all duration-200",
+                                        pin.length > index
+                                            ? "bg-blue-500 border-blue-500 scale-110 shadow-md shadow-blue-500/40"
+                                            : "border-muted-foreground/30 bg-transparent"
+                                    )}
+                                />
+                            ))}
+                        </div>
+
+                        {pinError && (
+                            <p className="text-sm text-destructive text-center font-medium animate-bounce">
+                                {pinError}
+                            </p>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+                            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
+                                <Button
+                                    key={num}
+                                    variant="outline"
+                                    type="button"
+                                    onClick={() => handleKeyPress(num)}
+                                    disabled={pinLoading}
+                                    className="h-14 text-xl font-semibold border-black/5 dark:border-white/5 bg-background/50 hover:bg-black/5 dark:hover:bg-white/5 hover:scale-[1.05] transition-all rounded-xl select-none text-foreground"
+                                >
+                                    {num}
+                                </Button>
+                            ))}
+                            <Button
+                                variant="ghost"
+                                type="button"
+                                onClick={handleClear}
+                                disabled={pinLoading || pin.length === 0}
+                                className="h-14 text-xs font-medium text-muted-foreground hover:text-foreground rounded-xl"
+                            >
+                                Clear
+                            </Button>
+                            <Button
+                                variant="outline"
+                                type="button"
+                                onClick={() => handleKeyPress("0")}
+                                disabled={pinLoading}
+                                className="h-14 text-xl font-semibold border-black/5 dark:border-white/5 bg-background/50 hover:bg-black/5 dark:hover:bg-white/5 hover:scale-[1.05] transition-all rounded-xl select-none text-foreground"
+                            >
+                                0
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={pinLoading || pin.length === 0}
+                                className="h-14 text-xs font-medium text-muted-foreground hover:text-foreground flex items-center justify-center rounded-xl"
+                            >
+                                Delete
+                            </Button>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="justify-center border-t border-black/5 dark:border-white/5 pt-4">
+                        <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => setShowPinInput(false)}
+                            className="text-xs text-muted-foreground hover:text-blue-500 flex items-center gap-1.5 transition-colors"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Sign in with another account</span>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen w-full items-center justify-center px-4 py-8">

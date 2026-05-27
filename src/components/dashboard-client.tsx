@@ -5,7 +5,7 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass } from "lucide-react";
+import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock } from "lucide-react";
 import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +16,9 @@ import { collection, query, getDocs, orderBy, limit, onSnapshot } from "firebase
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -47,6 +50,131 @@ export function DashboardClient({
     // Sidebar Layout States
     const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent">("dashboard");
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+    // PIN Settings Dialog States
+    const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+    const [pinEnabled, setPinEnabled] = useState(false);
+    const [newPin, setNewPin] = useState("");
+    const [confirmPin, setConfirmPin] = useState("");
+    const [pinError, setPinError] = useState("");
+    const [pinSuccess, setPinSuccess] = useState("");
+    const [pinLoading, setPinLoading] = useState(false);
+
+    // Sync user details and PIN status to LocalStorage
+    useEffect(() => {
+        if (!user) return;
+        
+        const syncLastUser = async () => {
+            try {
+                const pinStatus = await checkUserPinStatus(user.uid);
+                const lastUser = {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: user.photoURL,
+                    pinEnabled: pinStatus.pinEnabled
+                };
+                window.localStorage.setItem("vportal-last-user", JSON.stringify(lastUser));
+            } catch (err) {
+                console.error("Error syncing last user info to localStorage:", err);
+            }
+        };
+
+        syncLastUser();
+    }, [user]);
+
+    // Fetch PIN status on dialog open
+    useEffect(() => {
+        if (isPinDialogOpen && user) {
+            setPinError("");
+            setPinSuccess("");
+            setNewPin("");
+            setConfirmPin("");
+            checkUserPinStatus(user.uid).then((res) => {
+                if (res.success) {
+                    setPinEnabled(res.pinEnabled);
+                }
+            });
+        }
+    }, [isPinDialogOpen, user]);
+
+    const handleSetPin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPinError("");
+        setPinSuccess("");
+        
+        if (!user) return;
+        if (!/^\d{4}$/.test(newPin)) {
+            setPinError("PIN must be exactly 4 digits");
+            return;
+        }
+        if (newPin !== confirmPin) {
+            setPinError("PINs do not match");
+            return;
+        }
+
+        setPinLoading(true);
+        try {
+            const token = await user.getIdToken();
+            const res = await setUserPin(token, newPin);
+            if (res.success) {
+                setPinSuccess("PIN set successfully!");
+                setPinEnabled(true);
+                setNewPin("");
+                setConfirmPin("");
+                
+                // Update LocalStorage info
+                const stored = window.localStorage.getItem("vportal-last-user");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    parsed.pinEnabled = true;
+                    window.localStorage.setItem("vportal-last-user", JSON.stringify(parsed));
+                }
+            } else {
+                setPinError(res.message || "Failed to set PIN");
+            }
+        } catch (err) {
+            setPinError("An error occurred. Please try again.");
+            console.error(err);
+        } finally {
+            setPinLoading(false);
+        }
+    };
+
+    const handleRemovePin = async () => {
+        setPinError("");
+        setPinSuccess("");
+        
+        if (!user) return;
+        if (!confirm("Are you sure you want to disable and remove your login PIN?")) return;
+
+        setPinLoading(true);
+        try {
+            const token = await user.getIdToken();
+            const res = await removeUserPin(token);
+            if (res.success) {
+                setPinSuccess("PIN removed successfully.");
+                setPinEnabled(false);
+                setNewPin("");
+                setConfirmPin("");
+
+                // Update LocalStorage info
+                const stored = window.localStorage.getItem("vportal-last-user");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    parsed.pinEnabled = false;
+                    window.localStorage.setItem("vportal-last-user", JSON.stringify(parsed));
+                }
+            } else {
+                setPinError(res.message || "Failed to remove PIN");
+            }
+        } catch (err) {
+            setPinError("An error occurred. Please try again.");
+            console.error(err);
+        } finally {
+            setPinLoading(false);
+        }
+    };
 
     const orderedCategories = useMemo(() => {
         const categoriesById = new Map(categories.map((category) => [category.id, category]));
@@ -390,6 +518,15 @@ export function DashboardClient({
                     <Button 
                         variant="ghost" 
                         size="sm"
+                        onClick={() => setIsPinDialogOpen(true)} 
+                        className="w-full flex items-center justify-center gap-2 border border-black/5 dark:border-white/5 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/20 text-xs py-2 transition-all duration-300 rounded-lg mb-2"
+                    >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Manage Login PIN</span>
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm"
                         onClick={() => signOut()} 
                         className="w-full flex items-center justify-center gap-2 border border-black/5 dark:border-white/5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 text-xs py-2 transition-all duration-300 rounded-lg"
                     >
@@ -644,6 +781,96 @@ export function DashboardClient({
                     )}
                 </div>
             </main>
+
+            {/* PIN Settings Dialog */}
+            <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+                <DialogContent className="sm:max-w-md glass-panel border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden p-6">
+                    <DialogHeader className="space-y-2">
+                        <DialogTitle className="text-xl font-bold tracking-tight text-foreground/90 font-outfit flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-blue-500" />
+                            <span>Quick Login PIN Settings</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground">
+                            {pinEnabled 
+                                ? "Configure or disable your 4-digit passcode for quick sign-in from this device." 
+                                : "Create a 4-digit passcode to sign back in quickly next time without using Google login."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {pinEnabled && (
+                        <div className="p-3 mb-2 text-xs rounded-lg bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400">
+                            PIN Quick Login is currently <strong>enabled</strong> on this device.
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSetPin} className="space-y-4 pt-2">
+                        <div className="space-y-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="new-pin" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {pinEnabled ? "New 4-Digit PIN" : "4-Digit PIN"}
+                                </Label>
+                                <Input
+                                    id="new-pin"
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    value={newPin}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, "");
+                                        if (val.length <= 4) setNewPin(val);
+                                    }}
+                                    className="text-center text-lg tracking-[1.5em] font-mono h-11 bg-background/50 border-black/10 dark:border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-lg text-foreground"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="confirm-pin" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Confirm PIN
+                                </Label>
+                                <Input
+                                    id="confirm-pin"
+                                    type="password"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    maxLength={4}
+                                    placeholder="••••"
+                                    value={confirmPin}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, "");
+                                        if (val.length <= 4) setConfirmPin(val);
+                                    }}
+                                    className="text-center text-lg tracking-[1.5em] font-mono h-11 bg-background/50 border-black/10 dark:border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20 rounded-lg text-foreground"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {pinError && <p className="text-xs text-destructive text-center font-medium animate-bounce">{pinError}</p>}
+                        {pinSuccess && <p className="text-xs text-green-500 text-center font-medium">{pinSuccess}</p>}
+
+                        <div className="flex flex-col gap-2 pt-2">
+                            <Button type="submit" disabled={pinLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 shadow-lg shadow-blue-500/20 rounded-lg">
+                                {pinLoading ? "Saving..." : (pinEnabled ? "Update PIN" : "Enable PIN")}
+                            </Button>
+                            
+                            {pinEnabled && (
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={handleRemovePin} 
+                                    disabled={pinLoading} 
+                                    className="w-full border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-xs py-2 rounded-lg"
+                                >
+                                    Disable & Remove PIN
+                                </Button>
+                            )}
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
