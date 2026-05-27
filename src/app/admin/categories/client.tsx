@@ -242,9 +242,39 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                     <TableCell className="font-semibold">{cat.sortOrder}</TableCell>
                                     <TableCell className="font-medium">{cat.name}</TableCell>
                                     <TableCell>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cat.isActive ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"}`}>
-                                            {cat.isActive ? "Active" : "Inactive"}
-                                        </span>
+                                        <Switch
+                                            checked={cat.isActive}
+                                            onCheckedChange={async (checked) => {
+                                                if (!user) return;
+                                                // Optimistic client-side state update
+                                                setCategories((current) =>
+                                                    current.map((item) => (item.id === cat.id ? { ...item, isActive: checked } : item))
+                                                );
+                                                try {
+                                                    const token = await user.getIdToken();
+                                                    const data = {
+                                                        name: cat.name,
+                                                        sortOrder: cat.sortOrder,
+                                                        isActive: checked,
+                                                    };
+                                                    const result = await updateCategory(token, cat.id, data);
+                                                    if (!result.success) {
+                                                        // Revert on failure
+                                                        setCategories((current) =>
+                                                            current.map((item) => (item.id === cat.id ? { ...item, isActive: !checked } : item))
+                                                        );
+                                                        alert(result.message || "Failed to toggle status.");
+                                                    }
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    // Revert on error
+                                                    setCategories((current) =>
+                                                        current.map((item) => (item.id === cat.id ? { ...item, isActive: !checked } : item))
+                                                    );
+                                                    alert("Failed to toggle status due to network error.");
+                                                }
+                                            }}
+                                        />
                                     </TableCell>
                                     <TableCell className="text-right space-x-1">
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(cat)} disabled={loading} className="h-8 w-8">

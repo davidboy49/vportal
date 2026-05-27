@@ -413,9 +413,43 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${app.isActive ? "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"}`}>
-                                        {app.isActive ? "Active" : "Inactive"}
-                                    </span>
+                                    <Switch
+                                        checked={app.isActive}
+                                        onCheckedChange={async (checked) => {
+                                            if (!user) return;
+                                            // Optimistic client-side state update
+                                            setApps((current) =>
+                                                current.map((item) => (item.id === app.id ? { ...item, isActive: checked } : item))
+                                            );
+                                            try {
+                                                const token = await user.getIdToken();
+                                                const data = {
+                                                    name: app.name,
+                                                    url: app.url,
+                                                    description: app.description || "",
+                                                    iconUrl: app.iconUrl || "",
+                                                    categoryId: app.categoryId,
+                                                    tags: app.tags.join(", "),
+                                                    isActive: checked,
+                                                };
+                                                const result = await updateApp(token, app.id, data);
+                                                if (!result.success) {
+                                                    // Revert on failure
+                                                    setApps((current) =>
+                                                        current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
+                                                    );
+                                                    alert(result.message || "Failed to toggle status.");
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                                // Revert on error
+                                                setApps((current) =>
+                                                    current.map((item) => (item.id === app.id ? { ...item, isActive: !checked } : item))
+                                                );
+                                                alert("Failed to toggle status due to network error.");
+                                            }
+                                        }}
+                                    />
                                 </TableCell>
                                 <TableCell className="text-right space-x-1">
                                     <Button variant="ghost" size="icon" onClick={() => openEdit(app)} className="h-8 w-8">
