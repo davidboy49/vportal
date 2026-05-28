@@ -14,6 +14,7 @@ import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // Custom SVG Icons for Stripe-style Social Buttons
 const GoogleIcon = () => (
@@ -696,9 +697,11 @@ function LoginForm() {
                 {/* Header (Visible on mobile/tablet or for branding balance) */}
                 <div className="z-10 flex justify-between items-center w-full lg:hidden">
                     <BrandLogo />
+                    <ThemeToggle />
                 </div>
                 <div className="z-10 flex justify-between items-center w-full hidden lg:flex">
                     <div /> {/* Layout spacer on desktop */}
+                    <ThemeToggle />
                 </div>
 
                 {/* Main Card */}
