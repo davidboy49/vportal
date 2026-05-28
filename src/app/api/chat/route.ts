@@ -66,7 +66,7 @@ export async function POST(req: Request) {
             message: {
               role: "assistant",
               content:
-                "Whoa, slow down there. 😐 You're talking way too fast for my circuits. Let's take a 30-second breather. 🗿",
+                "Please slow down. You are sending requests too quickly. Try again in 30 seconds.",
             },
           },
         ],
