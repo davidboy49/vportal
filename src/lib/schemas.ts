@@ -14,6 +14,10 @@ export const AppSchema = z.object({
     categoryId: z.string().min(1, "Category is required"),
     tags: z.string().transform(str => str.split(",").map(s => s.trim()).filter(Boolean)), // Comma separated string to array
     isActive: z.boolean().default(true),
+    oauthEnabled: z.boolean().default(false),
+    clientId: z.string().optional().or(z.literal("")),
+    clientSecret: z.string().optional().or(z.literal("")),
+    redirectUris: z.string().optional().or(z.literal("")),
 });
 
 export const SettingsSchema = z.object({

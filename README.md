@@ -78,7 +78,13 @@ cd vportal
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Install xAI CLI (Optional)
+To use xAI features in development:
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+```
+
+### 3. Configure Environment Variables
 Create `.env.local` in the project root:
 
 ```env
@@ -101,7 +107,7 @@ ADMIN_EMAIL=your-email@example.com
 
 > **Important**: For `FIREBASE_ADMIN_PRIVATE_KEY`, keep the quotes and preserve `\n` newline characters.
 
-### 3. Deploy Firestore Security Rules
+### 4. Deploy Firestore Security Rules
 ```bash
 # Install Firebase CLI if not already installed
 npm install -g firebase-tools
@@ -121,7 +127,7 @@ The `firestore.rules` file is already configured with proper security:
 - Only admins can write apps/categories/settings
 - Users can only write to their own favorites/recent
 
-### 4. Run Development Server
+### 5. Run Development Server
 ```bash
 npm run dev
 ```

@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { createApp, updateApp, deleteApp } from "@/actions/apps";
-import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle, Key, Copy, RefreshCw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
 
@@ -69,6 +69,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     const [categoryId, setCategoryId] = useState("");
     const [tags, setTags] = useState("");
     const [isActive, setIsActive] = useState(true);
+    const [oauthEnabled, setOauthEnabled] = useState(false);
+    const [clientId, setClientId] = useState("");
+    const [clientSecret, setClientSecret] = useState("");
+    const [redirectUris, setRedirectUris] = useState("");
 
     // Filters and Pagination State
     const [searchTerm, setSearchTerm] = useState("");
@@ -97,7 +101,11 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 iconUrl,
                 categoryId,
                 tags,
-                isActive
+                isActive,
+                oauthEnabled,
+                clientId,
+                clientSecret,
+                redirectUris
             };
 
             if (editingApp) {
@@ -113,6 +121,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                             ...app,
                             ...data,
                             tags: data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
+                            oauthEnabled: data.oauthEnabled,
+                            clientId: data.clientId,
+                            clientSecret: data.clientSecret,
+                            redirectUris: data.redirectUris,
                         }
                         : app
                 )));
@@ -134,6 +146,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         categoryId: data.categoryId,
                         tags: data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
                         isActive: data.isActive,
+                        oauthEnabled: data.oauthEnabled,
+                        clientId: data.clientId,
+                        clientSecret: data.clientSecret,
+                        redirectUris: data.redirectUris,
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString(),
                     }
@@ -170,6 +186,19 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         }
     };
 
+    const generateClientId = () => {
+        const array = new Uint32Array(2);
+        window.crypto.getRandomValues(array);
+        setClientId(`client_${array[0].toString(36)}${array[1].toString(36)}`);
+    };
+
+    const generateClientSecret = () => {
+        const array = new Uint8Array(24);
+        window.crypto.getRandomValues(array);
+        const secret = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        setClientSecret(`secret_${secret}`);
+    };
+
     const openEdit = (app: App) => {
         setEditingApp(app);
         setName(app.name);
@@ -179,6 +208,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setCategoryId(app.categoryId);
         setTags(app.tags.join(", "));
         setIsActive(app.isActive);
+        setOauthEnabled(app.oauthEnabled || false);
+        setClientId(app.clientId || "");
+        setClientSecret(app.clientSecret || "");
+        setRedirectUris(app.redirectUris || "");
         setIsOpen(true);
     };
 
@@ -191,6 +224,10 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setCategoryId("");
         setTags("");
         setIsActive(true);
+        setOauthEnabled(false);
+        setClientId("");
+        setClientSecret("");
+        setRedirectUris("");
         setIconWarning(null);
         setIconUrlWarning(null);
     };
@@ -406,7 +443,82 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                     <Label>Active</Label>
                                 </div>
 
-                                <Button type="submit" className="w-full" disabled={loading}>
+                                <div className="border-t border-border pt-4 mt-2 space-y-4">
+                                    <div className="flex items-center space-x-2">
+                                        <Switch checked={oauthEnabled} onCheckedChange={setOauthEnabled} />
+                                        <Label className="font-semibold text-slate-800 dark:text-slate-200">Enable OAuth 2.0 / SSO</Label>
+                                    </div>
+                                    
+                                    {oauthEnabled && (
+                                        <div className="space-y-4 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-violet-50/20 dark:bg-violet-950/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-semibold">Client ID</Label>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={generateClientId}
+                                                        className="text-[10px] text-violet-600 hover:underline flex items-center gap-1 font-medium"
+                                                    >
+                                                        <RefreshCw className="w-3 h-3" /> Generate ID
+                                                    </button>
+                                                </div>
+                                                <Input 
+                                                    value={clientId} 
+                                                    onChange={e => setClientId(e.target.value)} 
+                                                    placeholder="e.g. client_jira"
+                                                    className="h-9 font-mono text-sm bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-semibold">Client Secret</Label>
+                                                    <div className="flex gap-2">
+                                                        {clientSecret && (
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(clientSecret);
+                                                                }}
+                                                                className="text-[10px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 font-medium"
+                                                            >
+                                                                <Copy className="w-3 h-3" /> Copy
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={generateClientSecret}
+                                                            className="text-[10px] text-violet-600 hover:underline flex items-center gap-1 font-medium"
+                                                        >
+                                                            <Key className="w-3 h-3" /> Generate Secret
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <Input 
+                                                    value={clientSecret} 
+                                                    onChange={e => setClientSecret(e.target.value)} 
+                                                    placeholder="Secret key for server-side auth"
+                                                    className="h-9 font-mono text-sm bg-white dark:bg-zinc-900"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-semibold">Authorized Redirect Callback URLs</Label>
+                                                <Input 
+                                                    value={redirectUris} 
+                                                    onChange={e => setRedirectUris(e.target.value)} 
+                                                    placeholder="http://localhost:4000/callback, https://app.com/callback"
+                                                    className="h-9 text-sm bg-white dark:bg-zinc-900"
+                                                />
+                                                <span className="text-[10px] text-muted-foreground leading-relaxed block">
+                                                    Separate multiple URLs with commas. Standard callback redirect validation is enforced.
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button type="submit" className="w-full mt-4" disabled={loading}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Save
                                 </Button>
@@ -479,7 +591,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                 </TableCell>
                                 <TableCell className="font-medium">
                                     <div className="flex flex-col">
-                                        <span>{app.name}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span>{app.name}</span>
+                                            {app.oauthEnabled && (
+                                                <span className="inline-flex items-center rounded-full bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-400 border border-violet-200/50 dark:border-violet-800/40 select-none">
+                                                    OAuth 2.0
+                                                </span>
+                                            )}
+                                        </div>
                                         <span className="text-xs text-muted-foreground font-normal truncate max-w-[200px] sm:max-w-[300px]">{app.url}</span>
                                     </div>
                                 </TableCell>

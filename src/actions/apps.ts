@@ -50,12 +50,20 @@ export async function createApp(idToken: string, data: unknown) {
 export async function updateApp(idToken: string, appId: string, data: unknown) {
     try {
         const admin = await verifyAdmin(idToken);
-        const validated = AppSchema.parse(data);
+        const validated = AppSchema.partial().parse(data);
 
         if (!adminDb) throw new Error("Database not initialized");
 
+        // Clean undefined fields so they aren't sent to Firestore
+        const cleanData: Record<string, any> = {};
+        for (const [key, value] of Object.entries(validated)) {
+            if (value !== undefined) {
+                cleanData[key] = value;
+            }
+        }
+
         await adminDb.collection("apps").doc(appId).update({
-            ...validated,
+            ...cleanData,
             updatedAt: new Date().toISOString(),
         });
 
