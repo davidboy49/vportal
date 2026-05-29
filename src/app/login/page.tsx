@@ -294,7 +294,34 @@ function LoginForm() {
     }, [pin, lastUser]);
 
     if (user) {
-        return null;
+        return (
+            <div className="flex h-screen w-full items-center justify-center flex-col gap-4 bg-slate-50 dark:bg-zinc-950 transition-colors duration-500">
+                <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+                    <div className="relative flex h-16 w-16 items-center justify-center">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-violet-500/20 animate-ping" />
+                        <Image
+                            src="/vportal_logo_v2.png"
+                            alt="VPortal"
+                            width={40}
+                            height={40}
+                            unoptimized
+                            className="relative z-10 w-10 h-10 rounded-lg object-cover border border-slate-200/80 dark:border-zinc-800/80 bg-white/50 dark:bg-black/20 p-0.5"
+                        />
+                    </div>
+                    <div className="text-center space-y-1">
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 font-outfit tracking-wide">
+                            VPortal
+                        </p>
+                        <p className="text-xs text-muted-foreground">Redirecting to your workspace...</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-600 animate-bounce [animation-delay:-0.3s]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-600 animate-bounce [animation-delay:-0.15s]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-600 animate-bounce" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     const renderRightPaneContent = () => {

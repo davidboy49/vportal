@@ -416,27 +416,27 @@ export function DashboardClient({
 
     const renderSidebarContent = () => {
         return (
-            <div className="flex flex-col h-full text-card-foreground">
+            <div className="flex flex-col h-full text-sidebar-foreground">
                 {/* Brand / Logo */}
-                <div className="flex items-center gap-3 px-6 py-5 border-b border-black/5 dark:border-white/5 shrink-0">
+                <div className="flex h-14 items-center gap-3 px-6 border-b border-sidebar-border shrink-0">
                     <Image
                         src={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
                         alt={globalSettings?.portalName || "VPortal Logo"}
-                        width={32}
-                        height={32}
+                        width={28}
+                        height={28}
                         unoptimized
-                        className="w-8 h-8 rounded-md object-cover border border-black/5 dark:border-white/5 p-0.5 bg-white/50 dark:bg-black/20"
+                        className="w-7 h-7 rounded-md object-cover border border-sidebar-border/30 p-0.5 bg-sidebar-accent/50"
                     />
-                    <span className="text-xl font-extrabold tracking-tight text-slate-800 dark:text-white font-outfit select-none">
+                    <span className="text-base font-bold tracking-tight text-sidebar-foreground font-outfit select-none">
                         {globalSettings?.portalName || "VPortal"}
                     </span>
                 </div>
 
                 {/* Navigation Links */}
-                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-7 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6 custom-scrollbar">
                     {/* Views Section */}
-                    <div className="space-y-1.5">
-                        <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Views</span>
+                    <div className="space-y-1">
+                        <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Views</span>
                         
                         <button
                             onClick={() => {
@@ -445,13 +445,13 @@ export function DashboardClient({
                                 setMobileSidebarOpen(false);
                             }}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                                 selectedView === "dashboard" && !selectedCategory
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
-                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
                             )}
                         >
-                            <LayoutGrid className="w-4.5 h-4.5 shrink-0" />
+                            <LayoutGrid className="w-4 h-4 shrink-0" />
                             <span>Dashboard</span>
                         </button>
 
@@ -462,13 +462,13 @@ export function DashboardClient({
                                 setMobileSidebarOpen(false);
                             }}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                                 selectedView === "favorites"
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
-                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
                             )}
                         >
-                            <Heart className="w-4.5 h-4.5 shrink-0" />
+                            <Heart className="w-4 h-4 shrink-0" />
                             <span>Favorites</span>
                         </button>
 
@@ -479,20 +479,20 @@ export function DashboardClient({
                                 setMobileSidebarOpen(false);
                             }}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
                                 selectedView === "recent"
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
-                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
                             )}
                         >
-                            <Clock className="w-4.5 h-4.5 shrink-0" />
+                            <Clock className="w-4 h-4 shrink-0" />
                             <span>Recents</span>
                         </button>
                     </div>
 
                     {/* Categories Section */}
-                    <div className="space-y-1.5">
-                        <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Categories</span>
+                    <div className="space-y-1">
+                        <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Categories</span>
                         
                         <button
                             onClick={() => {
@@ -500,21 +500,27 @@ export function DashboardClient({
                                 setMobileSidebarOpen(false);
                             }}
                             className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 group",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 group",
                                 selectedCategory === null && selectedView === "dashboard"
-                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
-                                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
                             )}
                         >
                             <Compass className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 truncate">All Categories</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-500/10 text-muted-foreground group-hover:text-foreground">
+                            <span className="flex-1 truncate text-left">All Categories</span>
+                            <span className={cn(
+                                "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                                selectedCategory === null && selectedView === "dashboard"
+                                    ? "bg-sidebar-background text-sidebar-accent-foreground"
+                                    : "bg-sidebar-accent/40 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
+                            )}>
                                 {apps.length}
                             </span>
                         </button>
 
                         {orderedCategories.map(cat => {
                             const count = categoryCounts[cat.id] || 0;
+                            const isActive = selectedCategory === cat.id;
                             return (
                                 <button
                                     key={cat.id}
@@ -533,15 +539,20 @@ export function DashboardClient({
                                     }}
                                     onDragEnd={() => setDraggingCategoryId(null)}
                                     className={cn(
-                                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 select-none text-left group",
-                                        selectedCategory === cat.id
-                                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/15"
-                                            : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent"
+                                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 select-none text-left group",
+                                        isActive
+                                            ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
                                     )}
                                 >
                                     <div className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
                                     <span className="truncate flex-1">{cat.name}</span>
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-500/10 text-muted-foreground group-hover:text-foreground">
+                                    <span className={cn(
+                                        "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                                        isActive
+                                            ? "bg-sidebar-background text-sidebar-accent-foreground"
+                                            : "bg-sidebar-accent/40 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
+                                    )}>
                                         {count}
                                     </span>
                                 </button>
@@ -551,22 +562,22 @@ export function DashboardClient({
 
                     {/* Admin Actions */}
                     {isAdmin && (
-                        <div className="space-y-1.5">
-                            <span className="px-3 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/80 block mb-2 select-none">Admin</span>
+                        <div className="space-y-1">
+                            <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Admin</span>
                             <Link
                                 href="/admin"
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent transition-all duration-300"
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
                                 onClick={() => setMobileSidebarOpen(false)}
                             >
-                                <Shield className="w-4.5 h-4.5 shrink-0" />
+                                <Shield className="w-4 h-4 shrink-0" />
                                 <span>Admin Portal</span>
                             </Link>
                             <Link
                                 href="/admin/settings"
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground border border-transparent transition-all duration-300"
+                                className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
                                 onClick={() => setMobileSidebarOpen(false)}
                             >
-                                <Settings className="w-4.5 h-4.5 shrink-0" />
+                                <Settings className="w-4 h-4 shrink-0" />
                                 <span>Portal Settings</span>
                             </Link>
                         </div>
@@ -574,29 +585,29 @@ export function DashboardClient({
                 </div>
 
                 {/* Bottom Profile / User Panel */}
-                <div className="p-4 border-t border-black/5 dark:border-white/5 space-y-3 shrink-0">
-                    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-black/5 dark:bg-white/5">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-3 border-t border-sidebar-border space-y-2 shrink-0">
+                    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-sidebar-accent/40">
+                        <div className="flex items-center gap-2 min-w-0">
                             {user?.photoURL ? (
                                 <Image
                                     src={user.photoURL}
                                     alt="User Avatar"
-                                    width={32}
-                                    height={32}
+                                    width={28}
+                                    height={28}
                                     unoptimized
-                                    className="w-8 h-8 rounded-full border border-black/10 dark:border-white/10"
+                                    className="w-7 h-7 rounded-full border border-sidebar-border/50 object-cover"
                                 />
                             ) : (
-                                <div className="w-8 h-8 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-blue-500/10">
+                                <div className="w-7 h-7 rounded-full bg-sidebar-accent text-sidebar-accent-foreground flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-sidebar-border/30">
                                     {user?.email ? user.email.slice(0, 2) : "U"}
                                 </div>
                             )}
                             <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-semibold truncate text-foreground/90 leading-tight">
-                                    {user?.displayName || (user?.isAnonymous ? "Guest Session" : user?.email?.split("@")[0])}
+                                <span className="text-xs font-semibold truncate text-sidebar-foreground leading-tight">
+                                    {user?.displayName || (user?.isAnonymous ? "Guest" : user?.email?.split("@")[0])}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
-                                    {user?.isAnonymous ? "Temporary User" : (isAdmin ? "Administrator" : "Standard User")}
+                                <span className="text-[9px] text-sidebar-foreground/50 truncate leading-tight mt-0.5">
+                                    {user?.isAnonymous ? "Guest Session" : (isAdmin ? "Administrator" : "Standard User")}
                                 </span>
                             </div>
                         </div>
@@ -606,16 +617,16 @@ export function DashboardClient({
                         variant="ghost" 
                         size="sm"
                         onClick={() => setIsPinDialogOpen(true)} 
-                        className="w-full flex items-center justify-center gap-2 border border-black/5 dark:border-white/5 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/20 text-xs py-2 transition-all duration-300 rounded-lg mb-2"
+                        className="w-full flex items-center justify-center gap-2 border border-sidebar-border/40 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-xs py-1.5 h-8 transition-all rounded-md"
                     >
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Manage Login PIN</span>
+                        <Lock className="w-3.5 h-3.5 text-sidebar-foreground/60" />
+                        <span className="text-sidebar-foreground/80">Login PIN</span>
                     </Button>
                     <Button 
                         variant="ghost" 
                         size="sm"
                         onClick={() => signOut()} 
-                        className="w-full flex items-center justify-center gap-2 border border-black/5 dark:border-white/5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 text-xs py-2 transition-all duration-300 rounded-lg"
+                        className="w-full flex items-center justify-center gap-2 border border-sidebar-border/40 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 text-xs py-1.5 h-8 transition-all rounded-md"
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -626,9 +637,9 @@ export function DashboardClient({
     };
 
     return (
-        <div className="min-h-screen flex w-full">
+        <div className="min-h-screen flex w-full bg-background text-foreground">
             {/* Desktop Sidebar (Left Panel) */}
-            <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-black/5 dark:border-white/5 h-screen sticky top-0 z-20 shrink-0">
+            <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen sticky top-0 z-20 shrink-0">
                 {renderSidebarContent()}
             </aside>
 
@@ -639,12 +650,12 @@ export function DashboardClient({
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
                     
                     {/* Sidebar Drawer panel */}
-                    <aside className="relative w-64 glass-panel border-r border-black/5 dark:border-white/5 h-full flex flex-col p-0 text-card-foreground shadow-2xl animate-in slide-in-from-left duration-300">
+                    <aside className="relative w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-full flex flex-col p-0 shadow-2xl animate-in slide-in-from-left duration-300">
                         {/* Close button inside panel */}
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-2 top-2 h-8 w-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                            className="absolute right-2 top-2 h-8 w-8 rounded-lg hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                             onClick={() => setMobileSidebarOpen(false)}
                         >
                             <X className="h-4 w-4" />
@@ -657,13 +668,13 @@ export function DashboardClient({
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0">
                 {/* Top Nav Header */}
-                <header className="glass-panel py-3 px-6 flex items-center justify-between border-b border-black/5 dark:border-white/5 sticky top-0 z-10 w-full backdrop-blur-md shrink-0">
+                <header className="bg-background/95 backdrop-blur border-b border-border py-3 px-6 flex items-center justify-between sticky top-0 z-10 w-full shrink-0">
                     <div className="flex items-center">
                         {/* Hamburger mobile toggle */}
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="md:hidden h-9 w-9 text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg mr-2"
+                            className="md:hidden h-9 w-9 text-foreground hover:bg-muted rounded-lg mr-2"
                             onClick={() => setMobileSidebarOpen(true)}
                         >
                             <Menu className="h-5 w-5" />
@@ -679,11 +690,11 @@ export function DashboardClient({
 
                     {/* Search bar input block */}
                     <div className="relative w-full max-w-sm md:max-w-md group">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-blue-500" />
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                         <Input
                             type="search"
                             placeholder="Search apps..."
-                            className="pl-9 h-9 bg-background/30 border-black/10 dark:border-white/10 focus:bg-background/80 focus:border-blue-500/50 dark:focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/30 transition-all duration-300 rounded-lg shadow-sm w-full"
+                            className="pl-9 h-9 bg-muted/40 border-input focus:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-300 rounded-lg shadow-sm w-full"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -693,37 +704,33 @@ export function DashboardClient({
                 {/* Dashboard grid panel wrapper */}
                 <div className="p-6 space-y-8 max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar">
                     
-                    {/* Welcome Banner Hero Card */}
-                    <div className="relative overflow-hidden rounded-2xl border border-black/5 dark:border-white/5 bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-transparent p-6 sm:p-8 shadow-sm dark:shadow-2xl">
-                        {/* Background meshes for dynamic look */}
-                        <div className="absolute right-0 top-0 -z-10 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-                        <div className="absolute right-20 bottom-0 -z-10 h-60 w-60 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
-                        
+                    {/* Welcome Banner Hero Block (shadcn style) */}
+                    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 sm:p-8 shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="space-y-2 max-w-2xl">
-                                <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 select-none">
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary select-none">
+                                    <span className="relative flex h-1.5 w-1.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
                                     </span>
-                                    <span>System Online</span>
+                                    <span>System Active</span>
                                 </div>
-                                <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl font-outfit">
-                                    Welcome back, <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">{user?.displayName || (user?.isAnonymous ? "Guest User" : user?.email?.split("@")[0])}</span> 👋
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl font-outfit">
+                                    Welcome back, {user?.displayName || (user?.isAnonymous ? "Guest User" : user?.email?.split("@")[0])}
                                 </h1>
-                                <p className="text-sm text-muted-foreground sm:text-base max-w-xl">
-                                    Access all company applications, tools, and portals from your personalized dashboard. Use Quick PIN for instant logins.
+                                <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
+                                    Access all company applications, tools, and portals from your centralized workspace. Use Quick PIN settings to configure instant logins.
                                 </p>
                             </div>
                             <div className="flex items-center gap-4 shrink-0 select-none">
-                                {/* Quick status cards */}
-                                <div className="glass-panel border border-black/5 dark:border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center min-w-[100px] shadow-sm">
+                                {/* Quick status cards - minimalist shadcn border style */}
+                                <div className="flex flex-col gap-0.5 border border-border bg-muted/40 rounded-lg px-4 py-3 min-w-[110px] text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Apps</span>
                                     <span className="text-2xl font-bold font-outfit text-foreground">{apps.length}</span>
-                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Apps</span>
                                 </div>
-                                <div className="glass-panel border border-black/5 dark:border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center min-w-[100px] shadow-sm">
+                                <div className="flex flex-col gap-0.5 border border-border bg-muted/40 rounded-lg px-4 py-3 min-w-[110px] text-center">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Favorites</span>
                                     <span className="text-2xl font-bold font-outfit text-foreground">{favorites.size}</span>
-                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Favorites</span>
                                 </div>
                             </div>
                         </div>
