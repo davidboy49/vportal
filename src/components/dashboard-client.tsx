@@ -389,7 +389,7 @@ export function DashboardClient({
                         <div className="relative flex h-16 w-16 items-center justify-center">
                             <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400/20 animate-ping" />
                             <Image
-                                src={globalSettings?.logoUrl || "/vportalicon.png"}
+                                src={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
                                 alt="VPortal"
                                 width={40}
                                 height={40}
@@ -420,7 +420,7 @@ export function DashboardClient({
                 {/* Brand / Logo */}
                 <div className="flex items-center gap-3 px-6 py-5 border-b border-black/5 dark:border-white/5 shrink-0">
                     <Image
-                        src={globalSettings?.logoUrl || "/vportalicon.png"}
+                        src={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
                         alt={globalSettings?.portalName || "VPortal Logo"}
                         width={32}
                         height={32}

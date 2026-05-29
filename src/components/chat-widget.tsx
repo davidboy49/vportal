@@ -345,13 +345,13 @@ export function ChatWidget() {
 
   return (
     <div
-      className="fixed bottom-24 right-6 z-50 font-sans select-none"
+      className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end font-sans select-none"
       ref={chatContainerRef}
       style={{ fontFamily: "var(--font-outfit), var(--font-geist-sans), sans-serif" }}
     >
       {/* Chat Window */}
       {isOpen && (
-        <div className="relative mb-4 flex h-[540px] w-[380px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-zinc-800/40 dark:bg-zinc-950/80 sm:w-[420px] animate-in slide-in-from-bottom-5 duration-300 ease-out">
+        <div className="relative mb-4 flex h-[70vh] sm:h-[540px] w-[calc(100vw-2rem)] sm:w-[420px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-white/80 shadow-2xl backdrop-blur-xl transition-all duration-300 dark:border-zinc-800/40 dark:bg-zinc-950/80 animate-in slide-in-from-bottom-5 duration-300 ease-out">
 
           {/* Confirm Clear Modal */}
           {showConfirmModal && (

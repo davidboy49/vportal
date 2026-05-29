@@ -87,7 +87,7 @@ function BrandLogo() {
         <div className="flex items-center gap-2 select-none">
             <div className="relative w-7 h-7 flex items-center justify-center rounded-lg overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-md">
                 <Image 
-                    src="/vportalicon.png" 
+                    src="/vportal_logo_v2.png" 
                     alt="VPortal Logo" 
                     fill
                     unoptimized
@@ -300,7 +300,7 @@ function LoginForm() {
     const renderRightPaneContent = () => {
         if (showPinInput && lastUser) {
             return (
-                <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
+                <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-5 sm:p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
                     <CardHeader className="text-center pb-4 p-0">
                         <div className="flex justify-center mb-4">
                             {lastUser.photoURL ? (
@@ -408,7 +408,7 @@ function LoginForm() {
         }
 
         return (
-            <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
+            <Card className="w-full max-w-[420px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-5 sm:p-6 md:p-8 backdrop-blur-xl transform-gpu transition-all duration-300 ease-out">
                 <CardHeader className="p-0 pb-6 text-left">
                     <CardTitle className="text-2xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
                         {isSignUp ? "Create your account" : "Sign in to your account"}
@@ -562,13 +562,13 @@ function LoginForm() {
     return (
         <div className="relative min-h-screen w-full flex flex-col lg:flex-row bg-slate-50 dark:bg-zinc-950 overflow-hidden">
             {/* Left Pane: Hero Image and Zoom */}
-            <div className="lg:w-[30%] w-full relative h-[280px] lg:h-screen overflow-hidden bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-zinc-800">
+            <div className="hidden lg:block lg:w-[30%] relative lg:h-screen overflow-hidden bg-slate-900 border-r border-slate-200 dark:border-zinc-800">
                 {/* Logo Overlay on Left Image for Desktop */}
                 <div className="absolute top-6 left-6 z-20 hidden lg:block">
                     <div className="flex items-center gap-2 select-none bg-white/80 dark:bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/20 shadow-sm">
                         <div className="relative w-5 h-5 flex items-center justify-center rounded-md overflow-hidden border border-slate-200/80 dark:border-zinc-800/80 shadow-sm">
                             <Image 
-                                src="/vportalicon.png" 
+                                src="/vportal_logo_v2.png" 
                                 alt="VPortal Logo" 
                                 fill
                                 unoptimized
@@ -691,7 +691,7 @@ function LoginForm() {
             </div>
 
             {/* Right Pane: Login Card Form */}
-            <div className="lg:w-[70%] w-full relative flex flex-col justify-between p-6 lg:p-12 min-h-[600px] lg:min-h-screen">
+            <div className="w-full lg:w-[70%] relative flex flex-col justify-between p-4 sm:p-6 lg:p-12 min-h-screen">
                 <StripeGradientBackground />
                 
                 {/* Header (Visible on mobile/tablet or for branding balance) */}

@@ -2,7 +2,7 @@ const CACHE_NAME = "vportal-cache-v1";
 const ASSETS_TO_CACHE = [
   "/",
   "/login",
-  "/vportalicon.png",
+  "/vportal_logo_v2.png",
   "/icon-192.png",
   "/icon-512.png"
 ];
