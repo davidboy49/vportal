@@ -133,7 +133,8 @@ function LoginForm() {
         "/slideshow/login_hero_image.jpg",
         "/slideshow/rice_paddies_drone.jpg",
         "/slideshow/temple_sunrise.jpg",
-        "/slideshow/misty_valley.jpg"
+        "/slideshow/misty_valley.jpg",
+        "/slideshow/can-anyone-find-a-high-resolution-image-of-the-creation-of-v0-8xq1yhiw09q41.webp"
     ];
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
