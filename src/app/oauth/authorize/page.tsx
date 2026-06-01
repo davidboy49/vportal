@@ -6,20 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { getOauthClientDetails, OauthClientInfo, createOAuthAuthorizationCode } from "@/actions/oauth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, ArrowRight, Loader2, AlertCircle, CheckCircle, HelpCircle } from "lucide-react";
+import { ArrowRight, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import Image from "next/image";
 
-function StripeGradientBackground() {
+function GridBackground() {
     return (
         <div className="absolute inset-0 -z-10 overflow-hidden bg-slate-50 dark:bg-zinc-950 transition-colors duration-500">
-            <div className="absolute inset-y-0 right-0 left-0 lg:left-1/3 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-30%] right-[-10%] w-[130%] h-[155%] origin-top-right transform -skew-y-12 rotate-[10deg] translate-x-[8%]">
-                    <div className="absolute top-0 right-0 w-full h-[60%] bg-gradient-to-br from-violet-300 via-purple-400 to-transparent opacity-40 dark:opacity-20 filter blur-[90px]" />
-                    <div className="absolute top-[20%] right-[10%] w-[70%] h-[50%] bg-gradient-to-r from-blue-300 via-indigo-400 to-transparent opacity-40 dark:opacity-20 filter blur-[80px]" />
-                </div>
-            </div>
-            <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-violet-400/5 rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-10%] left-[10%] w-[40%] h-[40%] bg-blue-450/5 rounded-full blur-[120px]" />
+            {/* Subtle, clean gray grid pattern on a solid neutral background */}
+            <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[size:16px_16px]" />
         </div>
     );
 }
@@ -34,7 +28,6 @@ function AuthorizeContent() {
     const redirectUri = searchParams.get("redirect_uri") || "";
     const responseType = searchParams.get("response_type") || "";
     const state = searchParams.get("state") || "";
-    const scope = searchParams.get("scope") || "";
 
     // States
     const [client, setClient] = useState<OauthClientInfo | null>(null);
@@ -139,8 +132,8 @@ function AuthorizeContent() {
     if (authLoading || loadingClient) {
         return (
             <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
-                <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
-                <p className="text-sm font-medium text-slate-500">Establishing secure auth session...</p>
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-sm font-medium text-muted-foreground">Establishing secure auth session...</p>
             </div>
         );
     }
@@ -148,19 +141,19 @@ function AuthorizeContent() {
     // Display page level errors
     if (pageError) {
         return (
-            <Card className="w-full max-w-[420px] border border-red-200/80 dark:border-red-950/40 bg-white/95 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
+            <Card className="w-full max-w-[420px] border border-destructive/20 bg-card text-card-foreground shadow-sm rounded-xl p-6">
                 <CardHeader className="text-center pb-4 p-0">
-                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-200/50 dark:border-red-900/30">
+                    <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4 border border-destructive/20">
                         <AlertCircle className="w-6 h-6" />
                     </div>
-                    <CardTitle className="text-xl font-bold font-outfit text-red-650 dark:text-red-450">
+                    <CardTitle className="text-xl font-bold font-outfit text-destructive">
                         Authentication Failed
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="px-0 py-2 text-center text-sm text-slate-650 dark:text-slate-400 leading-relaxed font-sans">
+                <CardContent className="px-0 py-2 text-center text-sm text-muted-foreground leading-relaxed font-sans">
                     {pageError}
                 </CardContent>
-                <CardFooter className="justify-center pt-4 border-t border-slate-100 dark:border-zinc-900 mt-4 px-0 pb-0">
+                <CardFooter className="justify-center pt-4 border-t border-border mt-4 px-0 pb-0">
                     <Button 
                         variant="outline" 
                         size="sm" 
@@ -177,110 +170,104 @@ function AuthorizeContent() {
     if (!user || !client) return null;
 
     return (
-        <Card className="w-full max-w-[460px] border border-slate-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-950/90 shadow-2xl rounded-2xl p-5 sm:p-6 md:p-8 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Card className="w-full max-w-[440px] border border-border bg-card text-card-foreground shadow-sm rounded-xl p-6 sm:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CardHeader className="p-0 pb-6 text-center select-none">
                 {/* Visual Connection mapping from VPortal -> App */}
-                <div className="flex items-center justify-center gap-5 mb-5">
+                <div className="flex items-center justify-center gap-4 mb-6">
                     {/* VPortal Logo */}
-                    <div className="relative w-12 h-12 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800/80 shadow-md p-1">
+                    <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-background border border-border p-1 shadow-xs">
                         <Image 
                             src="/vportal_logo_v2.png" 
                             alt="VPortal Logo" 
-                            width={36} 
-                            height={36} 
+                            width={32} 
+                            height={32} 
                             unoptimized
-                            className="object-cover rounded-lg"
+                            className="object-cover rounded-md"
                         />
                     </div>
                     
-                    <div className="flex items-center gap-1 text-slate-300 dark:text-zinc-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        <ArrowRight className="w-4 h-4 text-violet-500 animate-pulse mx-1" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
 
                     {/* Client App Logo */}
-                    <div className="relative w-12 h-12 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800/80 shadow-md p-1">
+                    <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-background border border-border p-1 shadow-xs">
                         {client.iconUrl ? (
                             <Image 
                                 src={client.iconUrl} 
                                 alt={`${client.name} Logo`} 
-                                width={36} 
-                                height={36} 
+                                width={32} 
+                                height={32} 
                                 unoptimized
-                                className="object-contain rounded-lg"
+                                className="object-contain rounded-md"
                             />
                         ) : (
-                            <div className="w-full h-full rounded-lg bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-lg uppercase border border-violet-200/20">
+                            <div className="w-full h-full rounded-md bg-muted text-muted-foreground flex items-center justify-center font-bold text-sm uppercase">
                                 {client.name.substring(0, 2)}
                             </div>
                         )}
                     </div>
                 </div>
 
-                <CardTitle className="text-xl font-bold font-outfit text-slate-800 dark:text-slate-100 tracking-tight">
+                <CardTitle className="text-lg font-semibold tracking-tight text-foreground">
                     Sign in to {client.name}
                 </CardTitle>
-                <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
+                <CardDescription className="text-xs text-muted-foreground mt-1">
                     using your VPortal single sign-on credential
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="p-0 space-y-5">
                 {/* Logged in User Profile Info */}
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/35">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
                     {user.photoURL ? (
                         <Image
                             src={user.photoURL}
                             alt="User Avatar"
-                            width={36}
-                            height={36}
+                            width={32}
+                            height={32}
                             unoptimized
-                            className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0"
+                            className="w-8 h-8 rounded-full border border-border object-cover shrink-0"
                         />
                     ) : (
-                        <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-violet-500/10">
+                        <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-border">
                             {user.email ? user.email.slice(0, 2) : "U"}
                         </div>
                     )}
                     <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate leading-none mb-1">
+                        <span className="text-xs font-semibold text-foreground truncate leading-none mb-0.5">
                             {user.displayName || user.email?.split("@")[0] || "Active User"}
                         </span>
                         <span className="text-[10px] text-muted-foreground truncate leading-none">
                             {user.email}
                         </span>
                     </div>
-                    <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-250/20 dark:border-emerald-800/20 select-none">
+                    <span className="ml-auto inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-250/20 dark:border-emerald-800/20 select-none">
                         Signed In
                     </span>
                 </div>
 
                 {/* Scope Permissions Requested */}
                 <div className="space-y-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-650 select-none block">
-                        Permission Requested:
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground select-none block">
+                        Permissions requested
                     </span>
-                    <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                    <ul className="space-y-2 text-xs text-muted-foreground">
                         <li className="flex gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-500 shrink-0 mt-0.5" />
                             <span>Read your basic profile (name, profile picture, user ID)</span>
                         </li>
                         <li className="flex gap-2">
-                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-500 shrink-0 mt-0.5" />
                             <span>Access and verify your email address (<strong>{user.email}</strong>)</span>
                         </li>
                     </ul>
                 </div>
 
-                <div className="text-[10px] text-muted-foreground leading-relaxed p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-900/20 border border-slate-100 dark:border-zinc-900 select-none">
-                    🔑 Only allow access if you trust <strong>{client.name}</strong>. VPortal does not share your account password.
+                <div className="text-[10px] text-muted-foreground leading-relaxed p-3 rounded-lg bg-muted/40 border border-border select-none font-sans">
+                    Only authorize this access if you trust the application. VPortal does not share your credential passwords.
                 </div>
             </CardContent>
 
-            <CardFooter className="p-0 pt-6 mt-6 border-t border-slate-100 dark:border-zinc-900 flex gap-3">
+            <CardFooter className="p-0 pt-6 mt-6 border-t border-border flex gap-3">
                 <Button 
                     variant="outline" 
                     onClick={handleDeny} 
@@ -292,7 +279,7 @@ function AuthorizeContent() {
                 <Button 
                     onClick={handleAllow} 
                     disabled={actionLoading}
-                    className="flex-1 bg-violet-650 hover:bg-violet-750 text-white shadow-sm transition-all rounded-lg text-xs"
+                    className="flex-1 rounded-lg text-xs"
                 >
                     {actionLoading ? (
                         <>
@@ -311,11 +298,11 @@ function AuthorizeContent() {
 export default function AuthorizePage() {
     return (
         <div className="relative min-h-screen w-full flex items-center justify-center p-4">
-            <StripeGradientBackground />
+            <GridBackground />
             <Suspense fallback={
                 <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
-                    <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
-                    <p className="text-xs text-slate-400">Loading Authorize Portal...</p>
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <p className="text-xs text-muted-foreground">Loading Authorize Portal...</p>
                 </div>
             }>
                 <AuthorizeContent />
