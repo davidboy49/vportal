@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 throw new Error("Auth not initialized");
             }
             await firebaseSignOut(auth);
+            setUser(null);
             router.push("/login");
         } catch (error) {
             console.error("Error signing out", error);

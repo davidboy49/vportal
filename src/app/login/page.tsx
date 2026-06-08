@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
-import { ArrowLeft, Key } from "lucide-react";
+import { ArrowLeft, Key, Lock } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -168,10 +168,11 @@ function LoginForm() {
     useEffect(() => {
         try {
             const stored = window.localStorage.getItem("vportal-last-user");
+            const skipPin = window.sessionStorage.getItem("vportal-skip-pin");
             if (stored) {
                 const parsed = JSON.parse(stored);
                 setLastUser(parsed);
-                if (parsed.pinEnabled) {
+                if (parsed.pinEnabled && skipPin !== "true") {
                     setShowPinInput(true);
                 }
             }
@@ -183,6 +184,7 @@ function LoginForm() {
     // Redirect and save user details after successful login
     useEffect(() => {
         if (user) {
+            window.sessionStorage.removeItem("vportal-skip-pin");
             checkUserPinStatus(user.uid).then((res) => {
                 const lastUserInfo = {
                     uid: user.uid,
@@ -438,7 +440,10 @@ function LoginForm() {
                         <Button
                             variant="link"
                             size="sm"
-                            onClick={() => setShowPinInput(false)}
+                            onClick={() => {
+                                window.sessionStorage.setItem("vportal-skip-pin", "true");
+                                setShowPinInput(false);
+                            }}
                             className="text-xs text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 flex items-center gap-1.5 transition-colors font-medium"
                         >
                             <ArrowLeft className="w-3.5 h-3.5" />
@@ -556,6 +561,20 @@ function LoginForm() {
 
                     {/* Integration Sign In Buttons */}
                     <div className="space-y-2">
+                        {lastUser && lastUser.pinEnabled && (
+                            <Button 
+                                variant="outline" 
+                                className="w-full h-10 bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-lg font-medium text-violet-700 dark:text-violet-300 transition-all flex items-center justify-center gap-2 shadow-xs"
+                                onClick={() => {
+                                    window.sessionStorage.removeItem("vportal-skip-pin");
+                                    setShowPinInput(true);
+                                }}
+                            >
+                                <Lock className="w-4 h-4 text-violet-500/90 dark:text-violet-400" />
+                                <span>Sign in with Passcode PIN</span>
+                            </Button>
+                        )}
+
                         <Button 
                             variant="outline" 
                             className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
