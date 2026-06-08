@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { checkUserPinStatus, verifyPinAndCreateToken } from "@/actions/pin";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Key } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -127,6 +127,20 @@ function LoginForm() {
     const [pinLoading, setPinLoading] = useState(false);
 
     const redirectUrl = searchParams.get("redirect") || "/";
+    const tokenParam = searchParams.get("token");
+    const errorParam = searchParams.get("error");
+
+    // Handle Keycloak OIDC callback tokens or errors
+    useEffect(() => {
+        if (errorParam) {
+            setError(decodeURIComponent(errorParam));
+        }
+        if (tokenParam && auth) {
+            signInWithCustomToken(auth, tokenParam).catch((err: any) => {
+                setError("Failed to sign in with Keycloak session: " + err.message);
+            });
+        }
+    }, [tokenParam, errorParam]);
 
     // Landscape images for multi-picture transitions
     const backgroundImages = [
@@ -542,6 +556,17 @@ function LoginForm() {
 
                     {/* Integration Sign In Buttons */}
                     <div className="space-y-2">
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
+                            onClick={() => {
+                                window.location.href = "/api/auth/keycloak/login";
+                            }}
+                        >
+                            <Key className="w-4 h-4 text-violet-500/90 dark:text-violet-400" />
+                            <span>Keycloak SSO</span>
+                        </Button>
+
                         <Button 
                             variant="outline" 
                             className="w-full h-10 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/80 hover:border-slate-300 dark:hover:border-zinc-700 rounded-lg font-medium text-slate-700 dark:text-slate-300 transition-all flex items-center justify-center gap-2 shadow-xs"
