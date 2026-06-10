@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
+    const { searchParams } = new URL(req.url);
+    const prompt = searchParams.get("prompt");
+
     const issuer = process.env.KEYCLOAK_ISSUER;
     const clientId = process.env.KEYCLOAK_CLIENT_ID;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -18,6 +21,10 @@ export async function GET() {
         response_type: "code",
         scope: "openid profile email",
     });
+
+    if (prompt) {
+        params.set("prompt", prompt);
+    }
 
     const authUrl = `${issuer}/protocol/openid-connect/auth?${params.toString()}`;
 

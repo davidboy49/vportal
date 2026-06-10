@@ -51,6 +51,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
             await firebaseSignOut(auth);
             setUser(null);
+            if (typeof window !== "undefined") {
+                window.localStorage.setItem("vportal-logged-out", "true");
+            }
             router.push("/login");
         } catch (error) {
             console.error("Error signing out", error);
