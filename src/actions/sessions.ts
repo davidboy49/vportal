@@ -34,11 +34,18 @@ export async function recordSession(idToken: string) {
         const headersList = await headers();
         const userAgent = headersList.get("user-agent") || "Unknown";
         
-        // Get IP Address
+        // Get IP Address (prioritizing Cloudflare client IP headers)
+        const cfConnectingIp = headersList.get("cf-connecting-ip");
+        const trueClientIp = headersList.get("true-client-ip");
         const forwardedFor = headersList.get("x-forwarded-for");
         const realIp = headersList.get("x-real-ip");
+        
         let ip = "127.0.0.1";
-        if (forwardedFor) {
+        if (cfConnectingIp) {
+            ip = cfConnectingIp.trim();
+        } else if (trueClientIp) {
+            ip = trueClientIp.trim();
+        } else if (forwardedFor) {
             ip = forwardedFor.split(",")[0].trim();
         } else if (realIp) {
             ip = realIp.trim();
