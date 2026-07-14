@@ -22,7 +22,7 @@ export async function setUserPin(idToken: string, pin: string) {
 
         const salt = crypto.randomBytes(16).toString("hex");
         const hash = crypto.pbkdf2Sync(pin, salt, 1000, 64, "sha512").toString("hex");
-
+        console.log(salt, hash);
         await adminDb.collection("users").doc(user.uid).set({
             pinHash: hash,
             pinSalt: salt,
