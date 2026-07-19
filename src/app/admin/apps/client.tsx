@@ -94,9 +94,14 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
 
         try {
             const token = await user.getIdToken();
+            let formattedUrl = url.trim();
+            if (formattedUrl && !/^https?:\/\//i.test(formattedUrl)) {
+                formattedUrl = `https://${formattedUrl}`;
+            }
+
             const data = {
                 name,
-                url,
+                url: formattedUrl,
                 description: desc,
                 iconUrl,
                 categoryId,
@@ -355,7 +360,13 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
 
                                 <div className="space-y-2">
                                     <Label>URL</Label>
-                                    <Input value={url} onChange={e => setUrl(e.target.value)} required type="url" />
+                                    <Input
+                                        value={url}
+                                        onChange={e => setUrl(e.target.value)}
+                                        required
+                                        type="text"
+                                        placeholder="https://example.com"
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
