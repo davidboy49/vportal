@@ -1,5 +1,18 @@
 import crypto from "crypto";
 
+/**
+ * Reads the OAuth/OIDC signing secret. Throws rather than falling back to a
+ * default value - a hardcoded fallback here would let anyone who has read the
+ * source forge valid login tokens for any user of any connected OAuth app.
+ */
+export function getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET environment variable is not set");
+    }
+    return secret;
+}
+
 function base64UrlEncode(str: string | Buffer): string {
     const buffer = typeof str === "string" ? Buffer.from(str) : str;
     return buffer.toString("base64")

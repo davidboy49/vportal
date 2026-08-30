@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
-import { verifyJwt } from "@/lib/jwt";
+import { verifyJwt, getJwtSecret } from "@/lib/jwt";
 
 export async function GET(req: Request) {
     try {
@@ -13,8 +13,8 @@ export async function GET(req: Request) {
         }
 
         const token = authHeader.split("Bearer ")[1].trim();
-        const jwtSecret = process.env.JWT_SECRET || "vportal_developer_fallback_jwt_secret_key_change_me_in_production";
-        
+        const jwtSecret = getJwtSecret();
+
         const decoded = verifyJwt(token, jwtSecret);
         if (!decoded || !decoded.sub) {
             return NextResponse.json(

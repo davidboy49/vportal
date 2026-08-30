@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { signJwt } from "@/lib/jwt";
+import { signJwt, getJwtSecret } from "@/lib/jwt";
 
 export async function POST(req: Request) {
     try {
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
         }
 
         // 8. Generate standard OIDC Access Token and ID Token
-        const jwtSecret = process.env.JWT_SECRET || "vportal_developer_fallback_jwt_secret_key_change_me_in_production";
+        const jwtSecret = getJwtSecret();
         
         // Custom ID Token Claims containing user identity profile
         const idTokenClaims = {
