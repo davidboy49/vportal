@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
-import { createApp, updateApp, deleteApp } from "@/actions/apps";
+import { createApp, updateApp, deleteApp, bulkUpdateApps, bulkDeleteApps } from "@/actions/apps";
 import { fetchSiteIcon } from "@/actions/icon";
-import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle, Key, Copy, RefreshCw } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle, Key, Copy, RefreshCw, Shield, ImagePlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
 
@@ -71,10 +72,20 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     const [categoryId, setCategoryId] = useState("");
     const [tags, setTags] = useState("");
     const [isActive, setIsActive] = useState(true);
+    const [visibility, setVisibility] = useState<"PUBLIC" | "ADMIN_ONLY">("PUBLIC");
     const [oauthEnabled, setOauthEnabled] = useState(false);
     const [clientId, setClientId] = useState("");
     const [clientSecret, setClientSecret] = useState("");
     const [redirectUris, setRedirectUris] = useState("");
+
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
+    // Backfill missing icons state
+    const [backfillingIcons, setBackfillingIcons] = useState(false);
+    const [backfillProgress, setBackfillProgress] = useState<{ done: number; total: number } | null>(null);
 
     // Filters and Pagination State
     const [searchTerm, setSearchTerm] = useState("");
@@ -101,13 +112,27 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 formattedUrl = `https://${formattedUrl}`;
             }
 
+            // Auto-fill a logo when the admin didn't provide one, instead of saving blank.
+            let resolvedIconUrl = iconUrl;
+            if (!resolvedIconUrl.trim()) {
+                try {
+                    const iconResult = await fetchSiteIcon(token, formattedUrl);
+                    if (iconResult.success && iconResult.iconUrl) {
+                        resolvedIconUrl = iconResult.iconUrl;
+                    }
+                } catch {
+                    // Non-fatal - app is still saved without an icon.
+                }
+            }
+
             const data = {
                 name,
                 url: formattedUrl,
                 description: desc,
-                iconUrl,
+                iconUrl: resolvedIconUrl,
                 categoryId,
                 tags,
+                visibility,
                 isActive,
                 oauthEnabled,
                 clientId,
@@ -153,6 +178,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         categoryId: data.categoryId,
                         tags: data.tags.split(",").map((tag: string) => tag.trim()).filter(Boolean),
                         isActive: data.isActive,
+                        visibility: data.visibility,
                         oauthEnabled: data.oauthEnabled,
                         clientId: data.clientId,
                         clientSecret: data.clientSecret,
@@ -215,6 +241,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setCategoryId(app.categoryId);
         setTags(app.tags.join(", "));
         setIsActive(app.isActive);
+        setVisibility(app.visibility || "PUBLIC");
         setOauthEnabled(app.oauthEnabled || false);
         setClientId(app.clientId || "");
         setClientSecret(app.clientSecret || "");
@@ -231,6 +258,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
         setCategoryId("");
         setTags("");
         setIsActive(true);
+        setVisibility("PUBLIC");
         setOauthEnabled(false);
         setClientId("");
         setClientSecret("");
@@ -304,15 +332,111 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     }, [filteredApps, currentPage]);
 
     const handleExport = () => {
-        const headers = ["ID", "Name", "Category", "URL", "Description", "Tags", "Status"];
+        const headers = ["ID", "Name", "Category", "URL", "Description", "Tags", "Visibility", "Status"];
         const rows = filteredApps.map(app => [
             app.id, app.name,
             categories.find(c => c.id === app.categoryId)?.name || "Unknown",
             app.url, app.description || "",
             app.tags.join(", "),
+            app.visibility || "PUBLIC",
             app.isActive ? "Active" : "Inactive"
         ]);
         exportToCsv(`apps_export_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    };
+
+    const toggleSelectAllOnPage = (checked: boolean) => {
+        setSelectedIds((current) => {
+            const next = new Set(current);
+            for (const app of paginatedApps) {
+                if (checked) next.add(app.id); else next.delete(app.id);
+            }
+            return next;
+        });
+    };
+
+    const handleBulkSetActive = async (isActiveValue: boolean) => {
+        if (!user || selectedIds.size === 0) return;
+        setBulkLoading(true);
+        const ids = Array.from(selectedIds);
+        try {
+            const token = await user.getIdToken();
+            const result = await bulkUpdateApps(token, ids, { isActive: isActiveValue });
+            if (result.success) {
+                setApps((current) => current.map((app) => (ids.includes(app.id) ? { ...app, isActive: isActiveValue } : app)));
+                showBanner(`${ids.length} app(s) ${isActiveValue ? "activated" : "deactivated"}.`, "success");
+                setSelectedIds(new Set());
+            } else {
+                showBanner(result.message || "Bulk update failed.", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showBanner("Unexpected error during bulk update.", "error");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBulkDeleteConfirmed = async () => {
+        setBulkDeleteConfirm(false);
+        if (!user || selectedIds.size === 0) return;
+        setBulkLoading(true);
+        const ids = Array.from(selectedIds);
+        try {
+            const token = await user.getIdToken();
+            const result = await bulkDeleteApps(token, ids);
+            if (result.success) {
+                setApps((current) => current.filter((app) => !ids.includes(app.id)));
+                showBanner(`${ids.length} app(s) deleted.`, "success");
+                setSelectedIds(new Set());
+            } else {
+                showBanner(result.message || "Bulk delete failed.", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showBanner("Unexpected error during bulk delete.", "error");
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const handleBackfillIcons = async () => {
+        if (!user) return;
+        const targets = apps.filter((app) => !app.iconUrl || !app.iconUrl.trim());
+        if (targets.length === 0) {
+            showBanner("Every app already has an icon.", "success");
+            return;
+        }
+
+        setBackfillingIcons(true);
+        setBackfillProgress({ done: 0, total: targets.length });
+        let filled = 0;
+        try {
+            const token = await user.getIdToken();
+            for (let i = 0; i < targets.length; i++) {
+                const app = targets[i];
+                try {
+                    const iconResult = await fetchSiteIcon(token, app.url);
+                    if (iconResult.success && iconResult.iconUrl) {
+                        const result = await updateApp(token, app.id, {
+                            name: app.name, url: app.url, description: app.description || "",
+                            iconUrl: iconResult.iconUrl, categoryId: app.categoryId,
+                            tags: app.tags.join(", "), isActive: app.isActive, visibility: app.visibility || "PUBLIC",
+                        });
+                        if (result.success) {
+                            filled++;
+                            setApps((current) => current.map((a) => (a.id === app.id ? { ...a, iconUrl: iconResult.iconUrl! } : a)));
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Failed to backfill icon for ${app.name}`, e);
+                }
+                setBackfillProgress({ done: i + 1, total: targets.length });
+            }
+            showBanner(`Found icons for ${filled} of ${targets.length} app(s) missing one.`, filled > 0 ? "success" : "error");
+        } finally {
+            setBackfillingIcons(false);
+            setBackfillProgress(null);
+        }
     };
 
     return (
@@ -328,6 +452,23 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     <p className="text-sm text-muted-foreground">Manage portal applications, categories, and tags.</p>
                 </div>
                 <div className="flex items-center gap-2 self-start md:self-auto">
+                    <Button
+                        variant="outline"
+                        onClick={handleBackfillIcons}
+                        disabled={backfillingIcons}
+                        className="flex items-center gap-2"
+                    >
+                        {backfillingIcons ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                {backfillProgress ? `${backfillProgress.done}/${backfillProgress.total}` : "Fetching..."}
+                            </>
+                        ) : (
+                            <>
+                                <ImagePlus className="h-4 w-4" /> Backfill Missing Icons
+                            </>
+                        )}
+                    </Button>
                     <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
                         <Download className="h-4 w-4" /> Export
                     </Button>
@@ -460,6 +601,18 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                     <Label>Active</Label>
                                 </div>
 
+                                <div className="space-y-2">
+                                    <Label>Visible To</Label>
+                                    <Select value={visibility} onValueChange={(v) => setVisibility(v as "PUBLIC" | "ADMIN_ONLY")}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">Everyone</SelectItem>
+                                            <SelectItem value="ADMIN_ONLY">Admins Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Admins-only apps are hidden from regular users on the dashboard.</p>
+                                </div>
+
                                 <div className="border-t border-border pt-4 mt-2 space-y-4">
                                     <div className="flex items-center space-x-2">
                                         <Switch checked={oauthEnabled} onCheckedChange={setOauthEnabled} />
@@ -581,15 +734,44 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                 </div>
             </div>
 
+            {/* Bulk action bar */}
+            {selectedIds.size > 0 && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+                    <span className="text-sm font-medium">{selectedIds.size} app(s) selected</span>
+                    <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => handleBulkSetActive(true)}>
+                            {bulkLoading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />} Activate
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => handleBulkSetActive(false)}>
+                            Deactivate
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-red-500 hover:text-red-600" disabled={bulkLoading} onClick={() => setBulkDeleteConfirm(true)}>
+                            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={bulkLoading} onClick={() => setSelectedIds(new Set())}>
+                            Clear
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Table */}
             <div className="rounded-lg border border-black/5 dark:border-white/5 overflow-hidden">
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
+                            <TableHead className="w-[40px]">
+                                <Checkbox
+                                    checked={paginatedApps.length > 0 && paginatedApps.every((app) => selectedIds.has(app.id))}
+                                    onCheckedChange={(checked) => toggleSelectAllOnPage(checked === true)}
+                                    aria-label="Select all apps on this page"
+                                />
+                            </TableHead>
                             <TableHead className="w-[80px]">Icon</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Tags</TableHead>
+                            <TableHead>Visibility</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -597,6 +779,19 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                     <TableBody>
                         {paginatedApps.map((app) => (
                             <TableRow key={app.id} className="hover:bg-muted/30">
+                                <TableCell>
+                                    <Checkbox
+                                        checked={selectedIds.has(app.id)}
+                                        onCheckedChange={(checked) => {
+                                            setSelectedIds((current) => {
+                                                const next = new Set(current);
+                                                if (checked === true) next.add(app.id); else next.delete(app.id);
+                                                return next;
+                                            });
+                                        }}
+                                        aria-label={`Select ${app.name}`}
+                                    />
+                                </TableCell>
                                 <TableCell>
                                     {app.iconUrl ? (
                                         <Image src={app.iconUrl} alt={`${app.name} icon`} width={32} height={32} unoptimized className="w-8 h-8 rounded bg-muted object-contain" />
@@ -626,6 +821,15 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                             <span key={idx} className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-semibold text-muted-foreground">{t}</span>
                                         )) : "-"}
                                     </div>
+                                </TableCell>
+                                <TableCell>
+                                    {app.visibility === "ADMIN_ONLY" ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                                            <Shield className="h-3 w-3" /> Admins Only
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground">Everyone</span>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center space-x-2">
@@ -675,7 +879,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         ))}
                         {filteredApps.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                     No apps found matching the criteria.
                                 </TableCell>
                             </TableRow>
@@ -711,6 +915,27 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteConfirmed}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Delete Confirmation AlertDialog */}
+            <AlertDialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {selectedIds.size} App(s)?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. All selected apps will be permanently removed from VPortal.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleBulkDeleteConfirmed}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Delete

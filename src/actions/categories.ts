@@ -66,6 +66,34 @@ export async function updateCategory(idToken: string, catId: string, data: unkno
     }
 }
 
+export async function reorderCategories(idToken: string, orderedIds: string[]) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminDb) throw new Error("Database not initialized");
+        if (orderedIds.length === 0) return { success: true };
+
+        const batch = adminDb.batch();
+        orderedIds.forEach((catId, index) => {
+            batch.update(adminDb!.collection("categories").doc(catId), { sortOrder: index });
+        });
+        await batch.commit();
+
+        await logAdminChange(admin, {
+            action: "REORDER_CATEGORIES",
+            targetType: "category",
+            message: `Reordered ${orderedIds.length} category(s)`,
+            metadata: { orderedIds },
+        });
+
+        revalidatePath("/admin/categories");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to reorder categories";
+        return { success: false, message };
+    }
+}
+
 export async function deleteCategory(idToken: string, catId: string) {
     try {
         const admin = await verifyAdmin(idToken);

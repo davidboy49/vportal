@@ -84,6 +84,67 @@ export async function updateApp(idToken: string, appId: string, data: unknown) {
     }
 }
 
+export async function bulkUpdateApps(idToken: string, appIds: string[], patch: { isActive?: boolean; visibility?: "PUBLIC" | "ADMIN_ONLY" }) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminDb) throw new Error("Database not initialized");
+        if (appIds.length === 0) return { success: true };
+
+        const batch = adminDb.batch();
+        for (const appId of appIds) {
+            batch.update(adminDb.collection("apps").doc(appId), {
+                ...patch,
+                updatedAt: new Date().toISOString(),
+            });
+        }
+        await batch.commit();
+
+        await logAdminChange(admin, {
+            action: "BULK_UPDATE_APPS",
+            targetType: "app",
+            targetId: appIds.join(","),
+            message: `Bulk updated ${appIds.length} app(s): ${JSON.stringify(patch)}`,
+            metadata: { count: appIds.length, patch },
+        });
+
+        revalidatePath("/admin/apps");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to bulk update apps";
+        return { success: false, message };
+    }
+}
+
+export async function bulkDeleteApps(idToken: string, appIds: string[]) {
+    try {
+        const admin = await verifyAdmin(idToken);
+        if (!adminDb) throw new Error("Database not initialized");
+        if (appIds.length === 0) return { success: true };
+
+        const batch = adminDb.batch();
+        for (const appId of appIds) {
+            batch.delete(adminDb.collection("apps").doc(appId));
+        }
+        await batch.commit();
+
+        await logAdminChange(admin, {
+            action: "BULK_DELETE_APPS",
+            targetType: "app",
+            targetId: appIds.join(","),
+            message: `Bulk deleted ${appIds.length} app(s)`,
+            metadata: { count: appIds.length },
+        });
+
+        revalidatePath("/admin/apps");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to bulk delete apps";
+        return { success: false, message };
+    }
+}
+
 export async function deleteApp(idToken: string, appId: string) {
     try {
         const admin = await verifyAdmin(idToken);

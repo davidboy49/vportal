@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
+import { CommandPalette } from "@/components/command-palette";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -61,6 +62,9 @@ export function DashboardClient({
     const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent">("dashboard");
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+    // Command Palette (Ctrl/Cmd+K)
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
     // PIN Settings Dialog States
     const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
     const [pinEnabled, setPinEnabled] = useState(false);
@@ -77,6 +81,18 @@ export function DashboardClient({
             if (isFav) next.add(id); else next.delete(id);
             return next;
         });
+    }, []);
+
+    // Global Ctrl/Cmd+K shortcut to open the command palette
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+                e.preventDefault();
+                setCommandPaletteOpen((open) => !open);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
     // Sync user details and PIN status to LocalStorage
@@ -199,16 +215,29 @@ export function DashboardClient({
         }
     };
 
+    // Admin-only apps/categories are hidden from regular users here, mirroring
+    // how isActive is already filtered - a display-layer curation, not a hard
+    // Firestore-rules boundary (consistent with the rest of this app's model).
+    const visibleApps = useMemo(
+        () => apps.filter((app) => isAdmin || app.visibility !== "ADMIN_ONLY"),
+        [apps, isAdmin]
+    );
+    const visibleCategories = useMemo(
+        () => categories.filter((category) => isAdmin || category.visibility !== "ADMIN_ONLY"),
+        [categories, isAdmin]
+    );
+
     const orderedCategories = useMemo(() => {
-        const categoriesById = new Map(categories.map((category) => [category.id, category]));
-        const orderIds = mounted ? categoryOrderIds : categories.map((c) => c.id);
+        const categoriesById = new Map(visibleCategories.map((category) => [category.id, category]));
+        const defaultOrder = [...visibleCategories].sort((a, b) => a.sortOrder - b.sortOrder).map((c) => c.id);
+        const orderIds = mounted && categoryOrderIds.length > 0 ? categoryOrderIds : defaultOrder;
         const preferredCategories = orderIds
             .map((categoryId) => categoriesById.get(categoryId))
             .filter((category): category is Category => Boolean(category));
-        const missingCategories = categories.filter((category) => !orderIds.includes(category.id));
+        const missingCategories = visibleCategories.filter((category) => !orderIds.includes(category.id));
 
         return [...preferredCategories, ...missingCategories];
-    }, [categories, categoryOrderIds, mounted]);
+    }, [visibleCategories, categoryOrderIds, mounted]);
 
     // Bootstrap admin on load if needed
     useEffect(() => {
@@ -309,13 +338,13 @@ export function DashboardClient({
         } catch {
             // ignore
         }
-        setCategoryOrderIds(categories.map((c) => c.id));
+        setCategoryOrderIds([...categories].sort((a, b) => a.sortOrder - b.sortOrder).map((c) => c.id));
     }, [categories, initialCategories]);
 
     const filteredApps = useMemo(() => {
         const categoryOrder = new Map(orderedCategories.map((category, index) => [category.id, index]));
 
-        return apps
+        return visibleApps
             .filter(app => {
                 const matchesSearch = (app.name || "").toLowerCase().includes(search.toLowerCase()) ||
                     (app.description || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -331,37 +360,37 @@ export function DashboardClient({
                 }
                 return (a.name || "").localeCompare(b.name || "");
             });
-    }, [apps, orderedCategories, search, selectedCategory]);
+    }, [visibleApps, orderedCategories, search, selectedCategory]);
 
     const recentApps = useMemo(() => {
         const recentOrder = new Map(recent.map((appId, index) => [appId, index]));
 
-        return apps
+        return visibleApps
             .filter((app) => recentOrder.has(app.id))
             .sort((a, b) => (recentOrder.get(a.id) ?? 0) - (recentOrder.get(b.id) ?? 0));
-    }, [apps, recent]);
+    }, [visibleApps, recent]);
 
     const favoriteApps = useMemo(() => {
-        return apps.filter(app => favorites.has(app.id));
-    }, [apps, favorites]);
+        return visibleApps.filter(app => favorites.has(app.id));
+    }, [visibleApps, favorites]);
 
     const categoryCounts = useMemo(() => {
         const counts: Record<string, number> = {};
-        apps.forEach(app => {
+        visibleApps.forEach(app => {
             if (app.categoryId) {
                 counts[app.categoryId] = (counts[app.categoryId] || 0) + 1;
             }
         });
         return counts;
-    }, [apps]);
+    }, [visibleApps]);
 
     const moveCategory = (fromCategoryId: string, toCategoryId: string) => {
         if (fromCategoryId === toCategoryId) return;
 
         setCategoryOrderIds((current) => {
-            const categoryIds = new Set(categories.map((category) => category.id));
+            const categoryIds = new Set(visibleCategories.map((category) => category.id));
             const currentOrder = current.filter((id) => categoryIds.has(id));
-            const missingIds = categories.map((category) => category.id).filter((id) => !currentOrder.includes(id));
+            const missingIds = visibleCategories.map((category) => category.id).filter((id) => !currentOrder.includes(id));
             const normalizedOrder = [...currentOrder, ...missingIds];
 
             const fromIndex = normalizedOrder.findIndex((id) => id === fromCategoryId);
@@ -514,7 +543,7 @@ export function DashboardClient({
                                     ? "bg-sidebar-background text-sidebar-accent-foreground"
                                     : "bg-sidebar-accent/40 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
                             )}>
-                                {apps.length}
+                                {visibleApps.length}
                             </span>
                         </button>
 
@@ -684,7 +713,7 @@ export function DashboardClient({
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium select-none font-outfit uppercase tracking-wider">
                             <span>Portal</span>
                             <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                            <span className="text-foreground">{selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : selectedView}</span>
+                            <span className="text-foreground">{selectedCategory ? visibleCategories.find(c => c.id === selectedCategory)?.name : selectedView}</span>
                         </div>
                     </div>
 
@@ -694,10 +723,18 @@ export function DashboardClient({
                         <Input
                             type="search"
                             placeholder="Search apps..."
-                            className="pl-9 h-9 bg-muted/40 border-input focus:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-300 rounded-lg shadow-sm w-full"
+                            className="pl-9 pr-14 h-9 bg-muted/40 border-input focus:bg-background focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-300 rounded-lg shadow-sm w-full"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setCommandPaletteOpen(true)}
+                            className="hidden sm:flex absolute right-2 top-1.5 h-6 items-center gap-0.5 rounded border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors select-none"
+                            title="Quick launch (Ctrl/Cmd+K)"
+                        >
+                            <span>Ctrl</span>K
+                        </button>
                     </div>
                 </header>
 
@@ -726,7 +763,7 @@ export function DashboardClient({
                                 {/* Quick status cards - minimalist shadcn border style */}
                                 <div className="flex flex-col gap-0.5 border border-border bg-muted/40 rounded-lg px-4 py-3 min-w-[110px] text-center">
                                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Apps</span>
-                                    <span className="text-2xl font-bold font-outfit text-foreground">{apps.length}</span>
+                                    <span className="text-2xl font-bold font-outfit text-foreground">{visibleApps.length}</span>
                                 </div>
                                 <div className="flex flex-col gap-0.5 border border-border bg-muted/40 rounded-lg px-4 py-3 min-w-[110px] text-center">
                                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Favorites</span>
@@ -748,7 +785,7 @@ export function DashboardClient({
                             )}
                             onClick={() => { setSelectedCategory(null); setSelectedView("dashboard"); }}
                         >
-                            All Categories ({apps.length})
+                            All Categories ({visibleApps.length})
                         </Badge>
                         {orderedCategories.map(cat => {
                             const count = categoryCounts[cat.id] || 0;
@@ -819,7 +856,7 @@ export function DashboardClient({
                                 <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     <div className="flex flex-col gap-1">
                                         <h2 className="text-2xl font-bold tracking-tight text-foreground/90 font-outfit">
-                                            {categories.find(c => c.id === selectedCategory)?.name}
+                                            {visibleCategories.find(c => c.id === selectedCategory)?.name}
                                         </h2>
                                         <p className="text-xs text-muted-foreground">Applications under this category.</p>
                                     </div>
@@ -981,6 +1018,8 @@ export function DashboardClient({
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <CommandPalette apps={visibleApps} open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
         </div>
     );
 }

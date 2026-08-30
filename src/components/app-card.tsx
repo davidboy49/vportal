@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Heart } from "lucide-react";
-import { toggleFavorite, logRecentApp } from "@/actions/user-ops";
+import { toggleFavorite } from "@/actions/user-ops";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { launchApp } from "@/lib/launch";
 
 interface AppCardProps {
     app: App;
@@ -62,26 +63,7 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
         }
     };
 
-    const handleLaunch = async () => {
-        if (user) {
-            const isGuest = user.isAnonymous || user.email === "guest@vportal.com";
-            if (!isGuest) {
-                user.getIdToken().then(token => logRecentApp(token, app.id));
-            } else {
-                try {
-                    const stored = localStorage.getItem("vportal_guest_recent") || "[]";
-                    const recentList: string[] = JSON.parse(stored);
-                    const filtered = recentList.filter(id => id !== app.id);
-                    filtered.unshift(app.id);
-                    localStorage.setItem("vportal_guest_recent", JSON.stringify(filtered.slice(0, 10)));
-                    window.dispatchEvent(new Event("vportal_guest_data_updated"));
-                } catch (e) {
-                    console.error("Failed to log guest recent app", e);
-                }
-            }
-        }
-        window.open(app.url, "_blank");
-    };
+    const handleLaunch = () => launchApp(user, app);
 
     return (
         <Card className={cn(

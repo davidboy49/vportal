@@ -19,8 +19,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { createCategory, updateCategory, deleteCategory } from "@/actions/categories";
-import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle } from "lucide-react";
+import { createCategory, updateCategory, deleteCategory, reorderCategories } from "@/actions/categories";
+import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle, GripVertical, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
 
@@ -58,11 +58,16 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
     const [name, setName] = useState("");
     const [sortOrder, setSortOrder] = useState(0);
     const [isActive, setIsActive] = useState(true);
+    const [visibility, setVisibility] = useState<"PUBLIC" | "ADMIN_ONLY">("PUBLIC");
 
     // Filters and Pagination State
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Drag-to-reorder state
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [reordering, setReordering] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,7 +77,10 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
 
         try {
             const token = await user.getIdToken();
-            const data = { name, sortOrder, isActive };
+            const nextSortOrder = editingCat
+                ? sortOrder
+                : (categories.length ? Math.max(...categories.map(c => c.sortOrder)) + 1 : 0);
+            const data = { name, sortOrder: nextSortOrder, isActive, visibility };
 
             if (editingCat) {
                 const result = await updateCategory(token, editingCat.id, data);
@@ -131,6 +139,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
         setName(cat.name);
         setSortOrder(cat.sortOrder);
         setIsActive(cat.isActive);
+        setVisibility(cat.visibility || "PUBLIC");
         setIsOpen(true);
     };
 
@@ -139,17 +148,61 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
         setName("");
         setSortOrder(0);
         setIsActive(true);
+        setVisibility("PUBLIC");
+    };
+
+    const handleDrop = async (targetId: string) => {
+        if (!user || !draggingId || draggingId === targetId) { setDraggingId(null); return; }
+
+        const currentOrder = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+        const fromIndex = currentOrder.findIndex((c) => c.id === draggingId);
+        const toIndex = currentOrder.findIndex((c) => c.id === targetId);
+        setDraggingId(null);
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        const reordered = [...currentOrder];
+        const [moved] = reordered.splice(fromIndex, 1);
+        reordered.splice(toIndex, 0, moved);
+        const orderedIds = reordered.map((c) => c.id);
+
+        const previousCategories = categories;
+        setCategories((current) => current.map((c) => {
+            const newIndex = orderedIds.indexOf(c.id);
+            return newIndex === -1 ? c : { ...c, sortOrder: newIndex };
+        }));
+
+        setReordering(true);
+        try {
+            const token = await user.getIdToken();
+            const result = await reorderCategories(token, orderedIds);
+            if (!result.success) {
+                setCategories(previousCategories);
+                showBanner(result.message || "Failed to reorder categories.", "error");
+            }
+        } catch (error) {
+            console.error(error);
+            setCategories(previousCategories);
+            showBanner("Unexpected error while reordering categories.", "error");
+        } finally {
+            setReordering(false);
+        }
     };
 
     const filteredCategories = useMemo(() => {
-        return categories.filter((cat) => {
-            const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = statusFilter === "ALL" ||
-                (statusFilter === "ACTIVE" && cat.isActive) ||
-                (statusFilter === "INACTIVE" && !cat.isActive);
-            return matchesSearch && matchesStatus;
-        });
+        return categories
+            .filter((cat) => {
+                const matchesSearch = cat.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesStatus = statusFilter === "ALL" ||
+                    (statusFilter === "ACTIVE" && cat.isActive) ||
+                    (statusFilter === "INACTIVE" && !cat.isActive);
+                return matchesSearch && matchesStatus;
+            })
+            .sort((a, b) => a.sortOrder - b.sortOrder);
     }, [categories, searchTerm, statusFilter]);
+
+    // Drag-and-drop reordering only makes sense against the full, unfiltered,
+    // unpaginated list - otherwise "drop above this row" is ambiguous.
+    const dragReorderEnabled = searchTerm === "" && statusFilter === "ALL" && categories.length === filteredCategories.length;
 
     useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
@@ -160,9 +213,9 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
     }, [filteredCategories, currentPage]);
 
     const handleExport = () => {
-        const headers = ["ID", "Name", "Sort Order", "Status"];
+        const headers = ["ID", "Name", "Sort Order", "Visibility", "Status"];
         const rows = filteredCategories.map(cat => [
-            cat.id, cat.name, cat.sortOrder.toString(), cat.isActive ? "Active" : "Inactive"
+            cat.id, cat.name, cat.sortOrder.toString(), cat.visibility || "PUBLIC", cat.isActive ? "Active" : "Inactive"
         ]);
         exportToCsv(`categories_export_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
     };
@@ -196,13 +249,25 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                     <Input value={name} onChange={e => setName(e.target.value)} required />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Sort Order</Label>
-                                    <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
+                                    <Label>Visible To</Label>
+                                    <Select value={visibility} onValueChange={(v) => setVisibility(v as "PUBLIC" | "ADMIN_ONLY")}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="PUBLIC">Everyone</SelectItem>
+                                            <SelectItem value="ADMIN_ONLY">Admins Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Admins-only categories are hidden from regular users on the dashboard.</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Switch checked={isActive} onCheckedChange={setIsActive} />
                                     <Label>Active</Label>
                                 </div>
+                                {editingCat && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Position #{sortOrder + 1} - drag rows in the table to reorder categories.
+                                    </p>
+                                )}
                                 <Button type="submit" className="w-full" disabled={loading}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Save
@@ -236,8 +301,12 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                 </div>
             </div>
 
+            {!dragReorderEnabled && (
+                <p className="text-xs text-muted-foreground -mt-2">Clear search/status filters and view page 1 to drag-reorder categories.</p>
+            )}
+
             <div className="relative">
-                {loading && (
+                {(loading || reordering) && (
                     <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded">
                         <Loader2 className="animate-spin text-primary h-8 w-8" />
                     </div>
@@ -246,17 +315,42 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="w-[100px]">Sort Order</TableHead>
+                                <TableHead className="w-[100px]">Order</TableHead>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Visibility</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {paginatedCategories.map((cat) => (
-                                <TableRow key={cat.id} className="hover:bg-muted/30">
-                                    <TableCell className="font-semibold">{cat.sortOrder}</TableCell>
+                                <TableRow
+                                    key={cat.id}
+                                    className={`hover:bg-muted/30 ${draggingId === cat.id ? "opacity-40" : ""}`}
+                                    draggable={dragReorderEnabled}
+                                    onDragStart={() => setDraggingId(cat.id)}
+                                    onDragOver={(e) => dragReorderEnabled && e.preventDefault()}
+                                    onDrop={() => dragReorderEnabled && handleDrop(cat.id)}
+                                    onDragEnd={() => setDraggingId(null)}
+                                >
+                                    <TableCell className="font-semibold">
+                                        <div className="flex items-center gap-2">
+                                            {dragReorderEnabled && (
+                                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
+                                            )}
+                                            <span>{cat.sortOrder}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="font-medium">{cat.name}</TableCell>
+                                    <TableCell>
+                                        {cat.visibility === "ADMIN_ONLY" ? (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/40">
+                                                <Shield className="h-3 w-3" /> Admins Only
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">Everyone</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex items-center space-x-2">
                                             <Switch
@@ -270,7 +364,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                                     try {
                                                         const token = await user.getIdToken();
                                                         const result = await updateCategory(token, cat.id, {
-                                                            name: cat.name, sortOrder: cat.sortOrder, isActive: checked,
+                                                            name: cat.name, sortOrder: cat.sortOrder, isActive: checked, visibility: cat.visibility || "PUBLIC",
                                                         });
                                                         if (!result.success) {
                                                             setCategories((current) =>
@@ -302,7 +396,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                             ))}
                             {filteredCategories.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground py-4">
+                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground py-4">
                                         No categories found matching criteria.
                                     </TableCell>
                                 </TableRow>
