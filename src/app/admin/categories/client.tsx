@@ -200,9 +200,10 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
             .sort((a, b) => a.sortOrder - b.sortOrder);
     }, [categories, searchTerm, statusFilter]);
 
-    // Drag-and-drop reordering only makes sense against the full, unfiltered,
-    // unpaginated list - otherwise "drop above this row" is ambiguous.
-    const dragReorderEnabled = searchTerm === "" && statusFilter === "ALL" && categories.length === filteredCategories.length;
+    const orderedCategoriesForReorderList = useMemo(
+        () => [...categories].sort((a, b) => a.sortOrder - b.sortOrder),
+        [categories]
+    );
 
     useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
@@ -265,7 +266,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                                 </div>
                                 {editingCat && (
                                     <p className="text-xs text-muted-foreground">
-                                        Position #{sortOrder + 1} - drag rows in the table to reorder categories.
+                                        Position #{sortOrder + 1} - use the &quot;Reorder Categories&quot; drag list below to change it.
                                     </p>
                                 )}
                                 <Button type="submit" className="w-full" disabled={loading}>
@@ -301,9 +302,39 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                 </div>
             </div>
 
-            {!dragReorderEnabled && (
-                <p className="text-xs text-muted-foreground -mt-2">Clear search/status filters and view page 1 to drag-reorder categories.</p>
-            )}
+            {/* Drag-to-reorder list - mirrors the dashboard sidebar's drag UX.
+                Always shows every category, independent of the table's search/status/pagination below. */}
+            <div className="rounded-lg border border-black/5 dark:border-white/5 bg-card p-3">
+                <div className="px-1 pb-2">
+                    <h3 className="text-sm font-semibold">Reorder Categories</h3>
+                    <p className="text-xs text-muted-foreground">Drag to change the order shown on the dashboard.</p>
+                </div>
+                <div className="space-y-1">
+                    {orderedCategoriesForReorderList.map((cat) => (
+                        <div
+                            key={cat.id}
+                            draggable
+                            onDragStart={() => setDraggingId(cat.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => handleDrop(cat.id)}
+                            onDragEnd={() => setDraggingId(null)}
+                            className={`flex items-center gap-2 px-2 py-2 rounded-md border border-transparent cursor-grab select-none transition-colors hover:bg-muted/60 active:cursor-grabbing ${draggingId === cat.id ? "opacity-40" : ""}`}
+                        >
+                            <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium flex-1 truncate">{cat.name}</span>
+                            {cat.visibility === "ADMIN_ONLY" && (
+                                <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            )}
+                            {!cat.isActive && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">Inactive</span>
+                            )}
+                        </div>
+                    ))}
+                    {orderedCategoriesForReorderList.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-4">No categories yet.</p>
+                    )}
+                </div>
+            </div>
 
             <div className="relative">
                 {(loading || reordering) && (
@@ -324,23 +355,8 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                         </TableHeader>
                         <TableBody>
                             {paginatedCategories.map((cat) => (
-                                <TableRow
-                                    key={cat.id}
-                                    className={`hover:bg-muted/30 ${draggingId === cat.id ? "opacity-40" : ""}`}
-                                    draggable={dragReorderEnabled}
-                                    onDragStart={() => setDraggingId(cat.id)}
-                                    onDragOver={(e) => dragReorderEnabled && e.preventDefault()}
-                                    onDrop={() => dragReorderEnabled && handleDrop(cat.id)}
-                                    onDragEnd={() => setDraggingId(null)}
-                                >
-                                    <TableCell className="font-semibold">
-                                        <div className="flex items-center gap-2">
-                                            {dragReorderEnabled && (
-                                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
-                                            )}
-                                            <span>{cat.sortOrder}</span>
-                                        </div>
-                                    </TableCell>
+                                <TableRow key={cat.id} className="hover:bg-muted/30">
+                                    <TableCell className="font-semibold">{cat.sortOrder}</TableCell>
                                     <TableCell className="font-medium">{cat.name}</TableCell>
                                     <TableCell>
                                         {cat.visibility === "ADMIN_ONLY" ? (
