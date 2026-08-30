@@ -239,25 +239,43 @@ export function DashboardClient({
         return [...preferredCategories, ...missingCategories];
     }, [visibleCategories, categoryOrderIds, mounted]);
 
-    // Bootstrap admin on load if needed
+    // Determine admin status, then bootstrap/reconcile in the background.
     useEffect(() => {
-        const bootstrapAndCheckRole = async () => {
-            if (!user) {
-                setIsAdmin(false);
-                return;
-            }
+        if (!user) {
+            setIsAdmin(false);
+            return;
+        }
 
+        let cancelled = false;
+
+        // Fast path: read whatever role claim is already on the cached ID
+        // token (no network round trip in the common case) so admin-only
+        // nav/apps don't stay hidden while the slower bootstrap call runs.
+        user.getIdTokenResult()
+            .then((tokenResult) => {
+                if (!cancelled) setIsAdmin(tokenResult.claims.role === "ADMIN");
+            })
+            .catch(() => {
+                if (!cancelled) setIsAdmin(false);
+            });
+
+        // Background reconciliation: bootstraps the designated admin email
+        // and force-refreshes claims in case a role change hasn't propagated
+        // to the cached token yet. Runs independently of the fast path above
+        // so a bootstrap failure (network blip, cold start, etc.) can't wipe
+        // out an already-known-good admin status.
+        (async () => {
             try {
                 const token = await user.getIdToken();
                 await bootstrapAdmin(token);
-                const tokenResult = await user.getIdTokenResult(true);
-                setIsAdmin(tokenResult.claims.role === "ADMIN");
+                const refreshed = await user.getIdTokenResult(true);
+                if (!cancelled) setIsAdmin(refreshed.claims.role === "ADMIN");
             } catch {
-                setIsAdmin(false);
+                // Fast-path result (if any) stands.
             }
-        };
+        })();
 
-        bootstrapAndCheckRole();
+        return () => { cancelled = true; };
     }, [user]);
 
     // Real-time synchronization and user-specific data fetching
