@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 import { createApp, updateApp, deleteApp } from "@/actions/apps";
+import { fetchSiteIcon } from "@/actions/icon";
 import { Loader2, Plus, Pencil, Trash2, Download, Search, CheckCircle2, XCircle, Key, Copy, RefreshCw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { exportToCsv } from "@/lib/export";
@@ -60,6 +61,7 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
     // Icon file size warning (replaces alert())
     const [iconWarning, setIconWarning] = useState<string | null>(null);
     const [iconUrlWarning, setIconUrlWarning] = useState<string | null>(null);
+    const [fetchingIcon, setFetchingIcon] = useState(false);
 
     // Form State
     const [name, setName] = useState("");
@@ -380,24 +382,28 @@ export function AppsClient({ initialApps, categories }: { initialApps: App[], ca
                                         {url && (
                                             <button
                                                 type="button"
-                                                onClick={() => {
+                                                disabled={fetchingIcon || !user}
+                                                onClick={async () => {
+                                                    if (!user) return;
+                                                    setIconUrlWarning(null);
+                                                    setFetchingIcon(true);
                                                     try {
-                                                        const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
-                                                        setIconUrl(`https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`);
-                                                        setIconUrlWarning(null);
-                                                    } catch {
-                                                        const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
-                                                        if (match && match[1]) {
-                                                            setIconUrl(`https://www.google.com/s2/favicons?domain=${match[1]}&sz=128`);
-                                                            setIconUrlWarning(null);
+                                                        const token = await user.getIdToken();
+                                                        const result = await fetchSiteIcon(token, url.trim());
+                                                        if (result.success && result.iconUrl) {
+                                                            setIconUrl(result.iconUrl);
                                                         } else {
-                                                            setIconUrlWarning("Please enter a valid App URL first.");
+                                                            setIconUrlWarning(result.message || "Couldn't fetch an icon for that site.");
                                                         }
+                                                    } catch {
+                                                        setIconUrlWarning("Couldn't fetch an icon for that site.");
+                                                    } finally {
+                                                        setFetchingIcon(false);
                                                     }
                                                 }}
-                                                className="text-xs text-primary hover:underline font-medium"
+                                                className="text-xs text-primary hover:underline font-medium disabled:opacity-50 disabled:no-underline"
                                             >
-                                                Use Website Icon
+                                                {fetchingIcon ? "Fetching..." : "Use Website Icon"}
                                             </button>
                                         )}
                                     </div>
