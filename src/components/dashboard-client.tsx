@@ -55,8 +55,10 @@ export function DashboardClient({
     const [recent, setRecent] = useState<string[]>([]);
     const [isAdmin, setIsAdmin] = useState(false);
     const [categoryOrderIds, setCategoryOrderIds] = useState<string[]>([]);
+    const [appOrderIds, setAppOrderIds] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [draggingCategoryId, setDraggingCategoryId] = useState<string | null>(null);
+    const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
 
     // Sidebar Layout States
     const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent">("dashboard");
@@ -359,8 +361,45 @@ export function DashboardClient({
         setCategoryOrderIds([...categories].sort((a, b) => a.sortOrder - b.sortOrder).map((c) => c.id));
     }, [categories, initialCategories]);
 
+    // Initialize personal app ordering on mount (drag-to-reorder on the dashboard grid)
+    useEffect(() => {
+        try {
+            const storedOrder = window.localStorage.getItem("vportal-app-order");
+            if (storedOrder) {
+                const parsed = JSON.parse(storedOrder);
+                if (Array.isArray(parsed)) {
+                    setAppOrderIds(parsed);
+                }
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
+
+    const moveApp = (fromAppId: string, toAppId: string) => {
+        if (fromAppId === toAppId) return;
+
+        setAppOrderIds((current) => {
+            const appIds = new Set(visibleApps.map((app) => app.id));
+            const currentOrder = current.filter((id) => appIds.has(id));
+            const missingIds = visibleApps.map((app) => app.id).filter((id) => !currentOrder.includes(id));
+            const normalizedOrder = [...currentOrder, ...missingIds];
+
+            const fromIndex = normalizedOrder.findIndex((id) => id === fromAppId);
+            const toIndex = normalizedOrder.findIndex((id) => id === toAppId);
+            if (fromIndex === -1 || toIndex === -1) return current;
+
+            const next = [...normalizedOrder];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            window.localStorage.setItem("vportal-app-order", JSON.stringify(next));
+            return next;
+        });
+    };
+
     const filteredApps = useMemo(() => {
         const categoryOrder = new Map(orderedCategories.map((category, index) => [category.id, index]));
+        const appOrder = new Map(appOrderIds.map((id, index) => [id, index]));
 
         return visibleApps
             .filter(app => {
@@ -376,9 +415,14 @@ export function DashboardClient({
                 if (categoryIndexA !== categoryIndexB) {
                     return categoryIndexA - categoryIndexB;
                 }
+                const orderA = appOrder.get(a.id);
+                const orderB = appOrder.get(b.id);
+                if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
+                if (orderA !== undefined) return -1;
+                if (orderB !== undefined) return 1;
                 return (a.name || "").localeCompare(b.name || "");
             });
-    }, [visibleApps, orderedCategories, search, selectedCategory]);
+    }, [visibleApps, orderedCategories, appOrderIds, search, selectedCategory]);
 
     const recentApps = useMemo(() => {
         const recentOrder = new Map(recent.map((appId, index) => [appId, index]));
@@ -880,12 +924,21 @@ export function DashboardClient({
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                         {filteredApps.map(app => (
-                                            <AppCard
+                                            <div
                                                 key={app.id}
-                                                app={app}
-                                                isFavorite={favorites.has(app.id)}
-                                                onToggleFavorite={handleToggleFavorite}
-                                            />
+                                                draggable
+                                                onDragStart={() => setDraggingAppId(app.id)}
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDrop={() => { if (draggingAppId) moveApp(draggingAppId, app.id); setDraggingAppId(null); }}
+                                                onDragEnd={() => setDraggingAppId(null)}
+                                                className={cn("cursor-grab active:cursor-grabbing", draggingAppId === app.id && "opacity-40")}
+                                            >
+                                                <AppCard
+                                                    app={app}
+                                                    isFavorite={favorites.has(app.id)}
+                                                    onToggleFavorite={handleToggleFavorite}
+                                                />
+                                            </div>
                                         ))}
                                         {filteredApps.length === 0 && (
                                             <p className="text-muted-foreground col-span-full py-12 text-center glass-panel rounded-xl border-dashed">No apps found matching your criteria in this category.</p>
@@ -928,12 +981,21 @@ export function DashboardClient({
                                         <h2 className="text-xl font-bold tracking-tight text-foreground/90 font-outfit">All Apps</h2>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                             {filteredApps.map(app => (
-                                                <AppCard
+                                                <div
                                                     key={app.id}
-                                                    app={app}
-                                                    isFavorite={favorites.has(app.id)}
-                                                    onToggleFavorite={handleToggleFavorite}
-                                                />
+                                                    draggable
+                                                    onDragStart={() => setDraggingAppId(app.id)}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDrop={() => { if (draggingAppId) moveApp(draggingAppId, app.id); setDraggingAppId(null); }}
+                                                    onDragEnd={() => setDraggingAppId(null)}
+                                                    className={cn("cursor-grab active:cursor-grabbing", draggingAppId === app.id && "opacity-40")}
+                                                >
+                                                    <AppCard
+                                                        app={app}
+                                                        isFavorite={favorites.has(app.id)}
+                                                        onToggleFavorite={handleToggleFavorite}
+                                                    />
+                                                </div>
                                             ))}
                                             {filteredApps.length === 0 && (
                                                 <p className="text-muted-foreground col-span-full py-12 text-center glass-panel rounded-xl border-dashed">No apps found matching your search criteria.</p>
