@@ -30,6 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
 import { CommandPalette } from "@/components/command-palette";
+import { MobileHome } from "@/components/mobile-home";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -756,8 +757,35 @@ export function DashboardClient({
                 </div>
             )}
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col min-w-0">
+            {/* Mobile Home (app-style layout with bottom tab bar) */}
+            <MobileHome
+                user={user}
+                isAdmin={isAdmin}
+                portalName={globalSettings?.portalName || "VPortal"}
+                logoUrl={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
+                selectedView={selectedView}
+                onSelectView={(view) => {
+                    setSelectedView(view);
+                    setSelectedCategory(null);
+                    window.scrollTo({ top: 0 });
+                }}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                categories={orderedCategories}
+                categoryCounts={categoryCounts}
+                visibleApps={visibleApps}
+                filteredApps={filteredApps}
+                favoriteApps={favoriteApps}
+                recentApps={recentApps}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onOpenSearch={() => setCommandPaletteOpen(true)}
+                onOpenMenu={() => setMobileSidebarOpen(true)}
+                onOpenPin={() => setIsPinDialogOpen(true)}
+            />
+
+            {/* Main Content Area (desktop) */}
+            <main className="hidden md:flex flex-1 flex-col min-w-0">
                 {/* Top Nav Header */}
                 <header className="bg-background/95 backdrop-blur border-b border-border py-3 px-6 flex items-center justify-between sticky top-0 z-10 w-full shrink-0">
                     <div className="flex items-center">
