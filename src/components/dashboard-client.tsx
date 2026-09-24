@@ -5,7 +5,7 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock } from "lucide-react";
+import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera } from "lucide-react";
 import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
@@ -31,6 +31,8 @@ import { Label } from "@/components/ui/label";
 import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
 import { CommandPalette } from "@/components/command-palette";
 import { MobileHome } from "@/components/mobile-home";
+import { AvatarDialog, UserAvatar } from "@/components/avatar-dialog";
+import { useUserAvatar } from "@/hooks/use-user-avatar";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -78,6 +80,11 @@ export function DashboardClient({
     const [pinLoading, setPinLoading] = useState(false);
     const [removePinConfirm, setRemovePinConfirm] = useState(false);
 
+    // Custom avatar
+    const { avatarUrl, customAvatar, saveAvatar } = useUserAvatar(user);
+    const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+    const userInitials = (user?.displayName || user?.email || "U").slice(0, 2);
+
     const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
         setFavorites(prev => {
             const next = new Set(prev);
@@ -109,7 +116,7 @@ export function DashboardClient({
                     uid: user.uid,
                     email: user.email,
                     displayName: user.displayName,
-                    photoURL: user.photoURL,
+                    photoURL: avatarUrl,
                     pinEnabled: pinStatus.pinEnabled
                 };
                 window.localStorage.setItem("vportal-last-user", JSON.stringify(lastUser));
@@ -119,7 +126,7 @@ export function DashboardClient({
         };
 
         syncLastUser();
-    }, [user]);
+    }, [user, avatarUrl]);
 
     // Fetch PIN status on dialog open
     useEffect(() => {
@@ -680,20 +687,17 @@ export function DashboardClient({
                 <div className="p-3 border-t border-sidebar-border space-y-2 shrink-0">
                     <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-sidebar-accent/40">
                         <div className="flex items-center gap-2 min-w-0">
-                            {user?.photoURL ? (
-                                <Image
-                                    src={user.photoURL}
-                                    alt="User Avatar"
-                                    width={28}
-                                    height={28}
-                                    unoptimized
-                                    className="w-7 h-7 rounded-full border border-sidebar-border/50 object-cover"
-                                />
-                            ) : (
-                                <div className="w-7 h-7 rounded-full bg-sidebar-accent text-sidebar-accent-foreground flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-sidebar-border/30">
-                                    {user?.email ? user.email.slice(0, 2) : "U"}
-                                </div>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setIsAvatarDialogOpen(true)}
+                                title="Change profile picture"
+                                className="relative shrink-0 rounded-full group/avatar"
+                            >
+                                <UserAvatar src={avatarUrl} initials={userInitials} size={28} className="border border-sidebar-border/50 text-[10px]" />
+                                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/avatar:opacity-100">
+                                    <Camera className="h-3 w-3" />
+                                </span>
+                            </button>
                             <div className="flex flex-col min-w-0">
                                 <span className="text-xs font-semibold truncate text-sidebar-foreground leading-tight">
                                     {user?.displayName || (user?.isAnonymous ? "Guest" : user?.email?.split("@")[0])}
@@ -782,6 +786,9 @@ export function DashboardClient({
                 onOpenSearch={() => setCommandPaletteOpen(true)}
                 onOpenMenu={() => setMobileSidebarOpen(true)}
                 onOpenPin={() => setIsPinDialogOpen(true)}
+                avatarUrl={avatarUrl}
+                onOpenAvatar={() => setIsAvatarDialogOpen(true)}
+                onMoveApp={moveApp}
             />
 
             {/* Main Content Area (desktop) */}
@@ -1126,6 +1133,15 @@ export function DashboardClient({
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <AvatarDialog
+                open={isAvatarDialogOpen}
+                onOpenChange={setIsAvatarDialogOpen}
+                customAvatar={customAvatar}
+                providerPhoto={user?.photoURL || null}
+                initials={userInitials}
+                onSave={saveAvatar}
+            />
 
             <CommandPalette apps={visibleApps} open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
         </div>

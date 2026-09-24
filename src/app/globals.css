@@ -237,3 +237,14 @@
   -webkit-backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
 }
+/* Mobile "arrange apps" mode: home-screen style wiggle */
+@keyframes tile-jiggle {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50% { transform: rotate(1.2deg); }
+}
+.animate-jiggle {
+  animation: tile-jiggle 0.28s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-jiggle { animation: none; }
+}
