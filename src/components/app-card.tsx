@@ -6,11 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Heart } from "lucide-react";
-import { toggleFavorite } from "@/actions/user-ops";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { launchApp } from "@/lib/launch";
+import { useToggleFavorite } from "@/hooks/use-toggle-favorite";
 
 interface AppCardProps {
     app: App;
@@ -20,48 +19,7 @@ interface AppCardProps {
 
 export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
     const { user } = useAuth();
-    const [loading, setLoading] = useState(false);
-
-    const handleFavorite = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!user) return;
-
-        // Optimistic update
-        onToggleFavorite(app.id, !isFavorite);
-
-        const isGuest = user.isAnonymous || user.email === "guest@vportal.com";
-        if (isGuest) {
-            try {
-                const storedFavs = localStorage.getItem("vportal_guest_favorites") || "[]";
-                const favsList: string[] = JSON.parse(storedFavs);
-                let nextList: string[];
-                if (favsList.includes(app.id)) {
-                    nextList = favsList.filter(id => id !== app.id);
-                } else {
-                    nextList = [...favsList, app.id];
-                }
-                localStorage.setItem("vportal_guest_favorites", JSON.stringify(nextList));
-                window.dispatchEvent(new Event("vportal_guest_data_updated"));
-            } catch (err) {
-                console.error("Failed to save guest favorites", err);
-                onToggleFavorite(app.id, isFavorite);
-            }
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const token = await user.getIdToken();
-            await toggleFavorite(token, app.id);
-        } catch (err) {
-            console.error("Failed to toggle favorite", err);
-            // Revert on error
-            onToggleFavorite(app.id, isFavorite);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { handleFavorite, loading } = useToggleFavorite(app, isFavorite, onToggleFavorite);
 
     const handleLaunch = () => launchApp(user, app);
 
