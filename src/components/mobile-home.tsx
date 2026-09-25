@@ -1,12 +1,14 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { User } from "firebase/auth";
 import { App, Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { launchApp } from "@/lib/launch";
 import { useToggleFavorite } from "@/hooks/use-toggle-favorite";
-import { ChevronRight, Clock, Heart, Home, LayoutGrid, Menu, Search } from "lucide-react";
+import { Camera, Check, ChevronRight, Clock, GripVertical, Heart, Home, LayoutGrid, Menu, Pencil, Search } from "lucide-react";
+import { UserAvatar } from "@/components/avatar-dialog";
 
 export type MobileView = "dashboard" | "favorites" | "recent";
 
@@ -30,6 +32,9 @@ interface MobileHomeProps {
     onOpenSearch: () => void;
     onOpenMenu: () => void;
     onOpenPin: () => void;
+    avatarUrl: string | null;
+    onOpenAvatar: () => void;
+    onMoveApp: (fromId: string, toId: string) => void;
 }
 
 // Frosted tile surface shared by every card on the mobile home screen.
@@ -80,33 +85,171 @@ function SquareTile({
     user,
     isFavorite,
     onToggleFavorite,
+    editing = false,
+    dragging = false,
+    jiggleDelay = 0,
 }: {
     app: App;
     user: User | null;
     isFavorite: boolean;
     onToggleFavorite: (id: string, isFav: boolean) => void;
+    editing?: boolean;
+    dragging?: boolean;
+    jiggleDelay?: number;
 }) {
     const { handleFavorite, loading } = useToggleFavorite(app, isFavorite, onToggleFavorite);
 
     return (
-        <div className="relative">
+        <div className={cn("relative", editing && !dragging && "animate-jiggle")} style={editing ? { animationDelay: `${jiggleDelay}ms` } : undefined}>
             <button
                 type="button"
-                onClick={() => launchApp(user, app)}
-                className={cn(tileSurface, "flex aspect-square w-full flex-col items-center justify-center gap-2 p-2 transition-transform active:scale-[0.97]")}
+                onClick={() => { if (!editing) launchApp(user, app); }}
+                className={cn(
+                    tileSurface,
+                    "flex aspect-square w-full flex-col items-center justify-center gap-2 p-2 transition-transform",
+                    editing ? "cursor-grab" : "active:scale-[0.97]",
+                    dragging && "scale-110 border-blue-500/60 shadow-xl ring-2 ring-blue-500/50 dark:border-blue-400/60"
+                )}
             >
                 <AppIcon app={app} size={44} />
                 <span className="line-clamp-2 text-center text-[13px] font-semibold leading-tight text-foreground">{app.name}</span>
             </button>
-            <button
-                type="button"
-                onClick={handleFavorite}
-                disabled={loading}
-                aria-label={isFavorite ? `Remove ${app.name} from favorites` : `Add ${app.name} to favorites`}
-                className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70"
-            >
-                <Heart className={cn("h-4 w-4 transition-transform active:scale-75", isFavorite && "fill-current text-red-500")} />
-            </button>
+            {editing ? (
+                <span className="pointer-events-none absolute right-2 top-2 text-muted-foreground/60">
+                    <GripVertical className="h-4 w-4" />
+                </span>
+            ) : (
+                <button
+                    type="button"
+                    onClick={handleFavorite}
+                    disabled={loading}
+                    aria-label={isFavorite ? `Remove ${app.name} from favorites` : `Add ${app.name} to favorites`}
+                    className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70"
+                >
+                    <Heart className={cn("h-4 w-4 transition-transform active:scale-75", isFavorite && "fill-current text-red-500")} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+const LONG_PRESS_MS = 450;
+const MOVE_TOLERANCE_PX = 10;
+const AUTOSCROLL_EDGE_PX = 110;
+
+/**
+ * Touch-friendly reorderable grid. HTML5 drag-and-drop doesn't fire on touch
+ * screens, so this tracks pointer events directly: long-press a tile (or tap
+ * "Edit") to enter edit mode, then drag; tiles swap live as the finger passes
+ * over them.
+ */
+function SortableGrid({
+    apps,
+    editing,
+    onStartEditing,
+    onMove,
+    renderTile,
+}: {
+    apps: App[];
+    editing: boolean;
+    onStartEditing: () => void;
+    onMove: (fromId: string, toId: string) => void;
+    renderTile: (app: App, state: { dragging: boolean; index: number }) => React.ReactNode;
+}) {
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const press = useRef<{ x: number; y: number; timer: number | null } | null>(null);
+    const pointerY = useRef(0);
+    const onMoveRef = useRef(onMove);
+    useEffect(() => {
+        onMoveRef.current = onMove;
+    });
+
+    const cancelPress = () => {
+        if (press.current?.timer) window.clearTimeout(press.current.timer);
+        press.current = null;
+    };
+
+    useEffect(() => cancelPress, []);
+
+    // While dragging: follow the finger, swap with the tile under it, block
+    // page scrolling, and auto-scroll near the top/bottom edges.
+    useEffect(() => {
+        if (!draggingId) return;
+
+        const handleMove = (e: PointerEvent) => {
+            pointerY.current = e.clientY;
+            const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-sort-id]");
+            const overId = over?.dataset.sortId;
+            if (overId && overId !== draggingId) onMoveRef.current(draggingId, overId);
+        };
+        const handleUp = () => setDraggingId(null);
+        const blockScroll = (e: TouchEvent) => e.preventDefault();
+
+        let frame = 0;
+        const autoScroll = () => {
+            const y = pointerY.current;
+            if (y && y < AUTOSCROLL_EDGE_PX) window.scrollBy(0, -8);
+            else if (y && y > window.innerHeight - AUTOSCROLL_EDGE_PX) window.scrollBy(0, 8);
+            frame = requestAnimationFrame(autoScroll);
+        };
+        frame = requestAnimationFrame(autoScroll);
+
+        window.addEventListener("pointermove", handleMove);
+        window.addEventListener("pointerup", handleUp);
+        window.addEventListener("pointercancel", handleUp);
+        window.addEventListener("touchmove", blockScroll, { passive: false });
+        return () => {
+            cancelAnimationFrame(frame);
+            pointerY.current = 0;
+            window.removeEventListener("pointermove", handleMove);
+            window.removeEventListener("pointerup", handleUp);
+            window.removeEventListener("pointercancel", handleUp);
+            window.removeEventListener("touchmove", blockScroll);
+        };
+    }, [draggingId]);
+
+    const handlePointerDown = (e: React.PointerEvent, appId: string) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        if (editing) {
+            setDraggingId(appId);
+            return;
+        }
+        cancelPress();
+        press.current = {
+            x: e.clientX,
+            y: e.clientY,
+            timer: window.setTimeout(() => {
+                press.current = null;
+                navigator.vibrate?.(15);
+                onStartEditing();
+                setDraggingId(appId);
+            }, LONG_PRESS_MS),
+        };
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        // Finger moved before the long-press fired: it's a scroll, not a press.
+        if (press.current && Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > MOVE_TOLERANCE_PX) {
+            cancelPress();
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-3 gap-3">
+            {apps.map((app, index) => (
+                <div
+                    key={app.id}
+                    data-sort-id={app.id}
+                    onPointerDown={(e) => handlePointerDown(e, app.id)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={cancelPress}
+                    onPointerCancel={cancelPress}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={cn("select-none [-webkit-touch-callout:none]", editing && "touch-none", draggingId === app.id && "relative z-10")}
+                >
+                    {renderTile(app, { dragging: draggingId === app.id, index })}
+                </div>
+            ))}
         </div>
     );
 }
@@ -151,7 +294,20 @@ export function MobileHome({
     onOpenSearch,
     onOpenMenu,
     onOpenPin,
+    avatarUrl,
+    onOpenAvatar,
+    onMoveApp,
 }: MobileHomeProps) {
+    const [editing, setEditing] = useState(false);
+
+    // Order is kept per category (the grid groups by category first), so only
+    // allow swaps between apps of the same category.
+    const handleMoveApp = (fromId: string, toId: string) => {
+        const from = filteredApps.find(app => app.id === fromId);
+        const to = filteredApps.find(app => app.id === toId);
+        if (from && to && from.categoryId === to.categoryId) onMoveApp(fromId, toId);
+    };
+
     const displayName = user?.displayName || (user?.isAnonymous ? "Guest" : user?.email?.split("@")[0]) || "there";
     const initials = (user?.displayName || user?.email || "U").slice(0, 2);
 
@@ -206,30 +362,22 @@ export function MobileHome({
                 </button>
             </header>
 
-            {/* Greeting */}
-            <button type="button" onClick={onOpenPin} className="flex w-full items-center gap-3 px-5 py-3 text-left">
-                {user?.photoURL ? (
-                    <Image
-                        src={user.photoURL}
-                        alt="User Avatar"
-                        width={56}
-                        height={56}
-                        unoptimized
-                        className="h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm dark:border-white/10"
-                    />
-                ) : (
-                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-500 text-lg font-bold uppercase text-white shadow-sm">
-                        {initials}
+            {/* Greeting: avatar opens the picture picker, text opens PIN settings */}
+            <div className="flex items-center gap-3 px-5 py-3">
+                <button type="button" onClick={onOpenAvatar} aria-label="Change profile picture" className="relative shrink-0 active:scale-95">
+                    <UserAvatar src={avatarUrl} initials={initials} size={56} className="border-2 border-white shadow-sm dark:border-white/10" />
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white dark:border-zinc-900">
+                        <Camera className="h-3 w-3" />
                     </span>
-                )}
-                <span className="min-w-0">
+                </button>
+                <button type="button" onClick={onOpenPin} className="min-w-0 text-left">
                     <span className="block truncate text-lg font-bold text-foreground font-outfit">Hello, {displayName}</span>
                     <span className="flex items-center gap-0.5 text-sm text-muted-foreground">
                         {user?.isAnonymous ? "Guest Session" : isAdmin ? "Administrator" : "Profile & Login PIN"}
                         <ChevronRight className="h-4 w-4" />
                     </span>
-                </span>
-            </button>
+                </button>
+            </div>
 
             <div className="space-y-4 px-4">
                 {/* Summary card (the "balance" card) */}
@@ -279,7 +427,25 @@ export function MobileHome({
 
                         {/* All apps, filterable by category */}
                         <section className="space-y-3 pt-2">
-                            <h2 className="px-1 text-lg font-bold text-foreground font-outfit">All Apps</h2>
+                            <div className="flex items-center justify-between px-1">
+                                <h2 className="text-lg font-bold text-foreground font-outfit">All Apps</h2>
+                                {filteredApps.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditing(e => !e)}
+                                        className={cn(
+                                            "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                                            editing ? "bg-blue-600 text-white shadow-md shadow-blue-600/25" : "text-blue-600 dark:text-blue-400"
+                                        )}
+                                    >
+                                        {editing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                                        {editing ? "Done" : "Arrange"}
+                                    </button>
+                                )}
+                            </div>
+                            {editing && (
+                                <p className="px-1 text-xs text-muted-foreground">Drag apps to reorder them. Tip: long-press any app to start arranging.</p>
+                            )}
                             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 custom-scrollbar">
                                 {[{ id: null as string | null, name: "All", count: visibleApps.length }, ...categories.map(c => ({ id: c.id as string | null, name: c.name, count: categoryCounts[c.id] || 0 }))].map(chip => (
                                     <button
@@ -298,7 +464,25 @@ export function MobileHome({
                                 ))}
                             </div>
                             {filteredApps.length > 0
-                                ? renderSquareGrid(filteredApps)
+                                ? (
+                                    <SortableGrid
+                                        apps={filteredApps}
+                                        editing={editing}
+                                        onStartEditing={() => setEditing(true)}
+                                        onMove={handleMoveApp}
+                                        renderTile={(app, { dragging, index }) => (
+                                            <SquareTile
+                                                app={app}
+                                                user={user}
+                                                isFavorite={favorites.has(app.id)}
+                                                onToggleFavorite={onToggleFavorite}
+                                                editing={editing}
+                                                dragging={dragging}
+                                                jiggleDelay={(index % 3) * 90}
+                                            />
+                                        )}
+                                    />
+                                )
                                 : <EmptyState>No apps found in this category.</EmptyState>}
                         </section>
                     </>
@@ -331,7 +515,11 @@ export function MobileHome({
                         <button
                             key={key}
                             type="button"
-                            onClick={() => (key === "menu" ? onOpenMenu() : onSelectView(key))}
+                            onClick={() => {
+                                setEditing(false);
+                                if (key === "menu") onOpenMenu();
+                                else onSelectView(key);
+                            }}
                             className={cn(
                                 "flex h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors",
                                 active ? "bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" : "text-muted-foreground"
