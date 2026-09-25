@@ -338,9 +338,9 @@ export function MobileHome({
     ];
 
     return (
-        <div className="relative min-h-screen w-full bg-gradient-to-b from-sky-200/80 via-sky-50 to-background pb-28 dark:from-sky-950/60 dark:via-background dark:to-background md:hidden">
+        <div className="min-h-screen w-full bg-gradient-to-b from-sky-200/80 via-sky-50 to-background pb-28 dark:from-sky-950/60 dark:via-background dark:to-background md:hidden">
             {/* Top bar: brand on the left, actions on the right */}
-            <header className="flex items-center justify-between px-5 pb-2 pt-5">
+            <header className="relative z-[1] flex items-center justify-between px-5 pb-2 pt-5">
                 <div className="flex min-w-0 items-center gap-2.5">
                     <Image
                         src={logoUrl}
@@ -363,7 +363,7 @@ export function MobileHome({
             </header>
 
             {/* Greeting: avatar opens the picture picker, text opens PIN settings */}
-            <div className="flex items-center gap-3 px-5 py-3">
+            <div className="relative z-[1] flex items-center gap-3 px-5 py-3">
                 <button type="button" onClick={onOpenAvatar} aria-label="Change profile picture" className="relative shrink-0 active:scale-95">
                     <UserAvatar src={avatarUrl} initials={initials} size={56} className="border-2 border-white shadow-sm dark:border-white/10" />
                     <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white dark:border-zinc-900">
@@ -379,7 +379,7 @@ export function MobileHome({
                 </button>
             </div>
 
-            <div className="space-y-4 px-4">
+            <div className="relative z-[1] space-y-4 px-4">
                 {/* Summary card (the "balance" card) */}
                 <div className={cn(tileSurface, "flex items-center gap-4 p-4")}>
                     <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-[6px] border-blue-600/90 dark:border-blue-500">

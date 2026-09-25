@@ -5,7 +5,7 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera } from "lucide-react";
+import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
@@ -33,11 +33,14 @@ import { CommandPalette } from "@/components/command-palette";
 import { MobileHome } from "@/components/mobile-home";
 import { AvatarDialog, UserAvatar } from "@/components/avatar-dialog";
 import { useUserAvatar } from "@/hooks/use-user-avatar";
+import { SeasonalEffects, useSeasonalEffectsEnabled } from "@/components/seasonal-effects";
+import { resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
+import { Switch } from "@/components/ui/switch";
 
 interface DashboardClientProps {
     initialApps: App[];
     categories: Category[];
-    globalSettings?: {
+    globalSettings?: SeasonalSettings & {
         portalName?: string;
         logoUrl?: string;
     };
@@ -84,6 +87,10 @@ export function DashboardClient({
     const { avatarUrl, customAvatar, saveAvatar } = useUserAvatar(user);
     const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
     const userInitials = (user?.displayName || user?.email || "U").slice(0, 2);
+
+    // Seasonal background effect chosen in Portal Settings (resolved by date for "auto")
+    const seasonalEffect = useMemo(() => resolveSeasonalEffect(globalSettings), [globalSettings]);
+    const [seasonalEnabled, setSeasonalEnabled] = useSeasonalEffectsEnabled();
 
     const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
         setFavorites(prev => {
@@ -709,6 +716,15 @@ export function DashboardClient({
                         </div>
                         <ThemeToggle />
                     </div>
+                    {seasonalEffect && (
+                        <label className="w-full flex items-center justify-between gap-2 border border-sidebar-border/40 hover:bg-sidebar-accent/50 text-xs px-3 h-8 rounded-md cursor-pointer transition-all">
+                            <span className="flex items-center gap-2 text-sidebar-foreground/80">
+                                <Sparkles className="w-3.5 h-3.5 text-sidebar-foreground/60" />
+                                Seasonal effects
+                            </span>
+                            <Switch size="sm" checked={seasonalEnabled} onCheckedChange={setSeasonalEnabled} aria-label="Seasonal effects" />
+                        </label>
+                    )}
                     <Button 
                         variant="ghost" 
                         size="sm"
@@ -761,6 +777,9 @@ export function DashboardClient({
                 </div>
             )}
 
+            {/* Decorative seasonal layer: above page backgrounds, below content */}
+            <SeasonalEffects effect={seasonalEffect} />
+
             {/* Mobile Home (app-style layout with bottom tab bar) */}
             <MobileHome
                 user={user}
@@ -792,7 +811,7 @@ export function DashboardClient({
             />
 
             {/* Main Content Area (desktop) */}
-            <main className="hidden md:flex flex-1 flex-col min-w-0">
+            <main className="hidden md:flex flex-1 flex-col min-w-0 relative z-[1]">
                 {/* Top Nav Header */}
                 <header className="bg-background/95 backdrop-blur border-b border-border py-3 px-6 flex items-center justify-between sticky top-0 z-10 w-full shrink-0">
                     <div className="flex items-center">
