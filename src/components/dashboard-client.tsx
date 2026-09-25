@@ -34,7 +34,7 @@ import { MobileHome } from "@/components/mobile-home";
 import { AvatarDialog, UserAvatar } from "@/components/avatar-dialog";
 import { useUserAvatar } from "@/hooks/use-user-avatar";
 import { SeasonalEffects, useSeasonalEffectsEnabled } from "@/components/seasonal-effects";
-import { resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
+import { BOTTOM_SCENE_EFFECTS, resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
 import { Switch } from "@/components/ui/switch";
 
 interface DashboardClientProps {
@@ -91,6 +91,7 @@ export function DashboardClient({
     // Seasonal background effect chosen in Portal Settings (resolved by date for "auto")
     const seasonalEffect = useMemo(() => resolveSeasonalEffect(globalSettings), [globalSettings]);
     const [seasonalEnabled, setSeasonalEnabled] = useSeasonalEffectsEnabled();
+    const sceneSpace = seasonalEnabled && seasonalEffect !== null && BOTTOM_SCENE_EFFECTS.has(seasonalEffect);
 
     const handleToggleFavorite = useCallback((id: string, isFav: boolean) => {
         setFavorites(prev => {
@@ -808,6 +809,7 @@ export function DashboardClient({
                 avatarUrl={avatarUrl}
                 onOpenAvatar={() => setIsAvatarDialogOpen(true)}
                 onMoveApp={moveApp}
+                sceneSpace={sceneSpace}
             />
 
             {/* Main Content Area (desktop) */}
@@ -855,7 +857,7 @@ export function DashboardClient({
                 </header>
 
                 {/* Dashboard grid panel wrapper */}
-                <div className="p-6 space-y-8 max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar">
+                <div className={cn("p-6 space-y-8 max-w-7xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar", sceneSpace && "pb-48")}>
                     
                     {/* Welcome Banner Hero Block (shadcn style) */}
                     <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 sm:p-8 shadow-sm">

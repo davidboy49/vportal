@@ -1,7 +1,11 @@
 // Seasonal background effects: the admin picks "auto" (by date), a fixed
 // effect, or "off" in Portal Settings. Pure helpers, safe on server and client.
 
-export const SEASONAL_EFFECTS = ["snow", "lanterns", "petals", "fireworks", "fireflies"] as const;
+export const SEASONAL_EFFECTS = [
+    "snow", "lanterns", "petals", "fireworks", "fireflies",
+    // Khmer-style effects
+    "lotus", "kbach", "angkor", "boats", "splash", "naga",
+] as const;
 export type SeasonalEffect = (typeof SEASONAL_EFFECTS)[number];
 
 export const SEASONAL_EFFECT_SETTINGS = ["auto", "off", ...SEASONAL_EFFECTS] as const;
@@ -15,7 +19,23 @@ export const SEASONAL_EFFECT_LABELS: Record<SeasonalEffectSetting, string> = {
     petals: "Flower petals",
     fireworks: "Fireworks",
     fireflies: "Fireflies",
+    lotus: "Lotus petals",
+    kbach: "Kbach gold border",
+    angkor: "Angkor Wat sunrise",
+    boats: "Water Festival boats",
+    splash: "Khmer New Year water splash",
+    naga: "Naga",
 };
+
+/** Scenes drawn along the bottom edge; pages leave room at the end so they can be seen. */
+export const BOTTOM_SCENE_EFFECTS: ReadonlySet<SeasonalEffect> = new Set(["angkor", "boats", "naga"]);
+
+/** Option groups for the admin picker. */
+export const SEASONAL_EFFECT_GROUPS: { label: string; options: SeasonalEffectSetting[] }[] = [
+    { label: "General", options: ["auto", "off"] },
+    { label: "Seasonal", options: ["snow", "lanterns", "petals", "fireworks", "fireflies"] },
+    { label: "Khmer style", options: ["lotus", "kbach", "angkor", "boats", "splash", "naga"] },
+];
 
 export interface SeasonalSettings {
     seasonalEffect?: SeasonalEffectSetting;
@@ -53,13 +73,13 @@ export function resolveSeasonalEffect(settings: SeasonalSettings | undefined, no
 
     // Khmer New Year usually falls on 13/14-16 April; admins can set the exact days.
     if (settings?.khmerNewYearStart) {
-        if (inRange(today, settings.khmerNewYearStart, settings.khmerNewYearEnd)) return "petals";
+        if (inRange(today, settings.khmerNewYearStart, settings.khmerNewYearEnd)) return "splash";
     } else if (inRange(today, `${year}-04-13`, `${year}-04-16`)) {
-        return "petals";
+        return "splash";
     }
 
     // Water Festival moves between October and November, so it only runs once set.
-    if (inRange(today, settings?.waterFestivalStart, settings?.waterFestivalEnd)) return "lanterns";
+    if (inRange(today, settings?.waterFestivalStart, settings?.waterFestivalEnd)) return "boats";
 
     if (month === 12) return "snow";
     return null;

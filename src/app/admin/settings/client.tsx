@@ -10,8 +10,8 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import Image from "next/image";
 import {
     resolveSeasonalEffect,
+    SEASONAL_EFFECT_GROUPS,
     SEASONAL_EFFECT_LABELS,
-    SEASONAL_EFFECT_SETTINGS,
     SeasonalEffectSetting,
     SeasonalSettings,
 } from "@/lib/seasonal";
@@ -114,8 +114,12 @@ export default function AdminSettingsPage({ initialSettings }: { initialSettings
                             value={seasonalEffect}
                             onChange={e => setSeasonalEffect(e.target.value as SeasonalEffectSetting)}
                         >
-                            {SEASONAL_EFFECT_SETTINGS.map(option => (
-                                <option key={option} value={option}>{SEASONAL_EFFECT_LABELS[option]}</option>
+                            {SEASONAL_EFFECT_GROUPS.map(group => (
+                                <optgroup key={group.label} label={group.label}>
+                                    {group.options.map(option => (
+                                        <option key={option} value={option}>{SEASONAL_EFFECT_LABELS[option]}</option>
+                                    ))}
+                                </optgroup>
                             ))}
                         </select>
                         <p className="text-xs text-muted-foreground">
@@ -125,7 +129,7 @@ export default function AdminSettingsPage({ initialSettings }: { initialSettings
                     {seasonalEffect === "auto" && (
                         <div className="space-y-4">
                             <p className="text-sm text-muted-foreground">
-                                Auto shows fireworks on 1–3 January and snow all of December. Khmer New Year (petals) and Water Festival (lanterns) move each year, so set their dates here. Khmer New Year uses 13–16 April if left empty; Water Festival is skipped until set.
+                                Auto shows fireworks on 1–3 January and snow all of December. Khmer New Year (water splash) and Water Festival (boats) move each year, so set their dates here. Khmer New Year uses 13–16 April if left empty; Water Festival is skipped until set.
                             </p>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">

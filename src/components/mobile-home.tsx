@@ -35,6 +35,8 @@ interface MobileHomeProps {
     avatarUrl: string | null;
     onOpenAvatar: () => void;
     onMoveApp: (fromId: string, toId: string) => void;
+    /** Extra room at the end of the page so a bottom seasonal scene shows above the tab bar. */
+    sceneSpace?: boolean;
 }
 
 // Frosted tile surface shared by every card on the mobile home screen.
@@ -297,6 +299,7 @@ export function MobileHome({
     avatarUrl,
     onOpenAvatar,
     onMoveApp,
+    sceneSpace = false,
 }: MobileHomeProps) {
     const [editing, setEditing] = useState(false);
 
@@ -338,7 +341,7 @@ export function MobileHome({
     ];
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-b from-sky-200/80 via-sky-50 to-background pb-28 dark:from-sky-950/60 dark:via-background dark:to-background md:hidden">
+        <div className={cn("min-h-screen w-full bg-gradient-to-b from-sky-200/80 via-sky-50 to-background dark:from-sky-950/60 dark:via-background dark:to-background md:hidden", sceneSpace ? "pb-60" : "pb-28")}>
             {/* Top bar: brand on the left, actions on the right */}
             <header className="relative z-[1] flex items-center justify-between px-5 pb-2 pt-5">
                 <div className="flex min-w-0 items-center gap-2.5">
