@@ -33,6 +33,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { MobileHome } from "@/components/mobile-home";
 import { AvatarDialog, UserAvatar } from "@/components/avatar-dialog";
 import { useUserAvatar } from "@/hooks/use-user-avatar";
+import { useToday } from "@/hooks/use-today";
 import { SeasonalEffects, useSeasonalEffectsEnabled } from "@/components/seasonal-effects";
 import { BOTTOM_SCENE_EFFECTS, resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
 import { Switch } from "@/components/ui/switch";
@@ -89,7 +90,8 @@ export function DashboardClient({
     const userInitials = (user?.displayName || user?.email || "U").slice(0, 2);
 
     // Seasonal background effect chosen in Portal Settings (resolved by date for "auto")
-    const seasonalEffect = useMemo(() => resolveSeasonalEffect(globalSettings), [globalSettings]);
+    const today = useToday();
+    const seasonalEffect = useMemo(() => resolveSeasonalEffect(globalSettings, today), [globalSettings, today]);
     const [seasonalEnabled, setSeasonalEnabled] = useSeasonalEffectsEnabled();
     const sceneSpace = seasonalEnabled && seasonalEffect !== null && BOTTOM_SCENE_EFFECTS.has(seasonalEffect);
 
