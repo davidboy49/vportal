@@ -5,7 +5,7 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera, Sparkles } from "lucide-react";
+import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera, Sparkles, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +37,10 @@ import { useToday } from "@/hooks/use-today";
 import { SeasonalEffects, useSeasonalEffectsEnabled } from "@/components/seasonal-effects";
 import { BOTTOM_SCENE_EFFECTS, resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
 import { Switch } from "@/components/ui/switch";
+import { AppNotesContext, useAppNotes } from "@/hooks/use-app-notes";
+import { AppNotesSheet } from "@/components/app-notes-sheet";
+import { AdminSheet } from "@/components/admin-sheet";
+import { launchApp } from "@/lib/launch";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -68,7 +72,7 @@ export function DashboardClient({
     const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
 
     // Sidebar Layout States
-    const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent">("dashboard");
+    const [selectedView, setSelectedView] = useState<"dashboard" | "favorites" | "recent" | "logins">("dashboard");
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     // Command Palette (Ctrl/Cmd+K)
@@ -88,6 +92,12 @@ export function DashboardClient({
     const { avatarUrl, customAvatar, saveAvatar } = useUserAvatar(user);
     const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
     const userInitials = (user?.displayName || user?.email || "U").slice(0, 2);
+
+    // Per-app login notes and the mobile admin shortcuts sheet
+    const { notes: appNotes, saveNote: saveAppNote } = useAppNotes(user);
+    const [notesApp, setNotesApp] = useState<App | null>(null);
+    const notesContext = useMemo(() => ({ notes: appNotes, openNotes: setNotesApp }), [appNotes]);
+    const [isAdminSheetOpen, setIsAdminSheetOpen] = useState(false);
 
     // Seasonal background effect chosen in Portal Settings (resolved by date for "auto")
     const today = useToday();
@@ -597,6 +607,23 @@ export function DashboardClient({
                             <Clock className="w-4 h-4 shrink-0" />
                             <span>Recents</span>
                         </button>
+
+                        <button
+                            onClick={() => {
+                                setSelectedView("logins");
+                                setSelectedCategory(null);
+                                setMobileSidebarOpen(false);
+                            }}
+                            className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                                selectedView === "logins"
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
+                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
+                            )}
+                        >
+                            <KeyRound className="w-4 h-4 shrink-0" />
+                            <span>Logins</span>
+                        </button>
                     </div>
 
                     {/* Categories Section */}
@@ -752,6 +779,7 @@ export function DashboardClient({
     };
 
     return (
+        <AppNotesContext.Provider value={notesContext}>
         <div className="min-h-screen flex w-full bg-background text-foreground">
             {/* Desktop Sidebar (Left Panel) */}
             <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen sticky top-0 z-20 shrink-0">
@@ -810,6 +838,9 @@ export function DashboardClient({
                 onOpenPin={() => setIsPinDialogOpen(true)}
                 avatarUrl={avatarUrl}
                 onOpenAvatar={() => setIsAvatarDialogOpen(true)}
+                onOpenAdmin={() => setIsAdminSheetOpen(true)}
+                notes={appNotes}
+                onOpenNotes={setNotesApp}
                 onMoveApp={moveApp}
                 sceneSpace={sceneSpace}
             />
@@ -965,6 +996,24 @@ export function DashboardClient({
                                 </div>
                             ) : (
                                 <p className="text-muted-foreground py-12 text-center glass-panel rounded-xl border-dashed">No recently launched apps found. Launch an app to see it here.</p>
+                            )}
+                        </section>
+                    )}
+
+                    {selectedView === "logins" && (
+                        <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-2xl font-bold tracking-tight text-foreground/90 font-outfit">Logins</h2>
+                                <p className="text-xs text-muted-foreground">Apps with saved login notes. Use the key button on any app to add one.</p>
+                            </div>
+                            {visibleApps.some(app => appNotes[app.id]) ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {visibleApps.filter(app => appNotes[app.id]).map(app => (
+                                        <AppCard key={app.id} app={app} isFavorite={favorites.has(app.id)} onToggleFavorite={handleToggleFavorite} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground py-12 text-center glass-panel rounded-xl border-dashed">No saved logins yet.</p>
                             )}
                         </section>
                     )}
@@ -1167,7 +1216,27 @@ export function DashboardClient({
             />
 
             <CommandPalette apps={visibleApps} open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
+
+            <AppNotesSheet
+                app={notesApp}
+                note={notesApp ? appNotes[notesApp.id] : undefined}
+                onOpenChange={(open) => { if (!open) setNotesApp(null); }}
+                onSave={saveAppNote}
+                onLaunch={(app) => launchApp(user, app)}
+            />
+
+            {isAdmin && (
+                <AdminSheet
+                    open={isAdminSheetOpen}
+                    onOpenChange={setIsAdminSheetOpen}
+                    displayName={user?.displayName || user?.email?.split("@")[0] || "Admin"}
+                    avatarUrl={avatarUrl}
+                    initials={userInitials}
+                    onChangePhoto={() => setIsAvatarDialogOpen(true)}
+                />
+            )}
         </div>
+        </AppNotesContext.Provider>
     );
 }
 
