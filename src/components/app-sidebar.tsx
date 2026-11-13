@@ -6,18 +6,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  Shield,
-  ArrowLeft,
-  LayoutGrid,
-  Compass,
-  FolderOpen,
-  Users,
-  History,
-  Settings,
-  MessageSquare,
-  Activity,
-} from "lucide-react";
+import { Shield, ArrowLeft } from "lucide-react";
+import { ADMIN_NAV_LINKS } from "@/lib/admin-nav";
 import {
   Sidebar,
   SidebarContent,
@@ -35,16 +25,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const pathname = usePathname();
 
-  const navLinks = [
-    { href: "/admin", label: "Overview", icon: LayoutGrid },
-    { href: "/admin/apps", label: "Manage Apps", icon: Compass },
-    { href: "/admin/categories", label: "Categories", icon: FolderOpen },
-    { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/sessions", label: "User Sessions", icon: Activity },
-    { href: "/admin/changelog", label: "Change Logs", icon: History },
-    { href: "/admin/chats", label: "Chat Logs", icon: MessageSquare },
-    { href: "/admin/settings", label: "Portal Settings", icon: Settings },
-  ];
+  const navLinks = ADMIN_NAV_LINKS;
 
   return (
     <Sidebar {...props}>

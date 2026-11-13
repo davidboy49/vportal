@@ -7,10 +7,12 @@ import { App, Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { launchApp } from "@/lib/launch";
 import { useToggleFavorite } from "@/hooks/use-toggle-favorite";
-import { Camera, Check, ChevronRight, Clock, GripVertical, Heart, Home, LayoutGrid, Menu, Pencil, Search } from "lucide-react";
+import { Camera, Check, ChevronRight, GripVertical, Heart, Home, KeyRound, LayoutGrid, Pencil, Plus, Search, ShieldCheck } from "lucide-react";
 import { UserAvatar } from "@/components/avatar-dialog";
+import { AppNotesMap } from "@/hooks/use-app-notes";
+import { hasNoteContent } from "@/lib/app-notes";
 
-export type MobileView = "dashboard" | "favorites" | "recent";
+export type MobileView = "dashboard" | "favorites" | "recent" | "logins";
 
 interface MobileHomeProps {
     user: User | null;
@@ -34,6 +36,9 @@ interface MobileHomeProps {
     onOpenPin: () => void;
     avatarUrl: string | null;
     onOpenAvatar: () => void;
+    onOpenAdmin: () => void;
+    notes: AppNotesMap;
+    onOpenNotes: (app: App) => void;
     onMoveApp: (fromId: string, toId: string) => void;
     /** Extra room at the end of the page so a bottom seasonal scene shows above the tab bar. */
     sceneSpace?: boolean;
@@ -67,17 +72,36 @@ function AppIcon({ app, size }: { app: App; size: number }) {
     );
 }
 
-/** Wide tile: icon on the left, label on the right (top row of the home grid). */
-function WideTile({ app, user }: { app: App; user: User | null }) {
+/** Small key in a tile corner, shown only for apps with saved login notes. */
+function NotesBadge({ app, onOpenNotes, className }: { app: App; onOpenNotes: (app: App) => void; className?: string }) {
     return (
         <button
             type="button"
-            onClick={() => launchApp(user, app)}
-            className={cn(tileSurface, "flex min-h-[72px] items-center gap-3 px-4 py-3 text-left transition-transform active:scale-[0.97]")}
+            onClick={(e) => { e.stopPropagation(); onOpenNotes(app); }}
+            aria-label={`Login notes for ${app.name}`}
+            className={cn("absolute flex h-8 w-8 items-center justify-center rounded-full", className)}
         >
-            <span className="shrink-0"><AppIcon app={app} size={40} /></span>
-            <span className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{app.name}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-sm ring-2 ring-white dark:ring-zinc-900">
+                <KeyRound className="h-3 w-3" />
+            </span>
         </button>
+    );
+}
+
+/** Wide tile: icon on the left, label on the right (top row of the home grid). */
+function WideTile({ app, user, hasNotes, onOpenNotes }: { app: App; user: User | null; hasNotes: boolean; onOpenNotes: (app: App) => void }) {
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => launchApp(user, app)}
+                className={cn(tileSurface, "flex min-h-[72px] w-full items-center gap-3 px-4 py-3 text-left transition-transform active:scale-[0.97]", hasNotes && "pr-9")}
+            >
+                <span className="shrink-0"><AppIcon app={app} size={40} /></span>
+                <span className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{app.name}</span>
+            </button>
+            {hasNotes && <NotesBadge app={app} onOpenNotes={onOpenNotes} className="right-1 top-1/2 -translate-y-1/2" />}
+        </div>
     );
 }
 
@@ -87,6 +111,8 @@ function SquareTile({
     user,
     isFavorite,
     onToggleFavorite,
+    hasNotes,
+    onOpenNotes,
     editing = false,
     dragging = false,
     jiggleDelay = 0,
@@ -95,6 +121,8 @@ function SquareTile({
     user: User | null;
     isFavorite: boolean;
     onToggleFavorite: (id: string, isFav: boolean) => void;
+    hasNotes: boolean;
+    onOpenNotes: (app: App) => void;
     editing?: boolean;
     dragging?: boolean;
     jiggleDelay?: number;
@@ -131,7 +159,98 @@ function SquareTile({
                     <Heart className={cn("h-4 w-4 transition-transform active:scale-75", isFavorite && "fill-current text-red-500")} />
                 </button>
             )}
+            {hasNotes && !editing && <NotesBadge app={app} onOpenNotes={onOpenNotes} className="left-1 top-1" />}
         </div>
+    );
+}
+
+/** Row in the Logins tab. */
+function LoginRow({ app, subtitle, onOpen, action }: { app: App; subtitle?: string; onOpen: () => void; action: "open" | "add" }) {
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors active:bg-black/5 dark:active:bg-white/5"
+        >
+            <span className="shrink-0"><AppIcon app={app} size={36} /></span>
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-foreground">{app.name}</span>
+                {subtitle && <span className="block truncate text-xs text-muted-foreground">{subtitle}</span>}
+            </span>
+            {action === "open"
+                ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                : <Plus className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />}
+        </button>
+    );
+}
+
+function LoginsView({ apps, notes, onOpenNotes }: { apps: App[]; notes: AppNotesMap; onOpenNotes: (app: App) => void }) {
+    const [adding, setAdding] = useState(false);
+    const [query, setQuery] = useState("");
+
+    const saved = apps.filter(app => hasNoteContent(notes[app.id])).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    const q = query.trim().toLowerCase();
+    const candidates = apps
+        .filter(app => !hasNoteContent(notes[app.id]))
+        .filter(app => !q || (app.name || "").toLowerCase().includes(q))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    return (
+        <section className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+                <h2 className="text-lg font-bold text-foreground font-outfit">Logins</h2>
+                <button
+                    type="button"
+                    onClick={() => { setAdding(a => !a); setQuery(""); }}
+                    className={cn(
+                        "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                        adding ? "bg-blue-600 text-white shadow-md shadow-blue-600/25" : "text-blue-600 dark:text-blue-400"
+                    )}
+                >
+                    {adding ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                    {adding ? "Done" : "Add login"}
+                </button>
+            </div>
+
+            {adding && (
+                <div className={cn(tileSurface, "overflow-hidden")}>
+                    <div className="relative border-b border-black/5 p-2 dark:border-white/10">
+                        <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                            type="search"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Find an app"
+                            autoFocus
+                            className="h-10 w-full rounded-xl bg-black/5 pl-9 pr-3 text-base outline-none dark:bg-white/10"
+                        />
+                    </div>
+                    <div className="max-h-80 divide-y divide-black/5 overflow-y-auto dark:divide-white/10">
+                        {candidates.length > 0
+                            ? candidates.map(app => <LoginRow key={app.id} app={app} action="add" onOpen={() => onOpenNotes(app)} />)
+                            : <p className="px-4 py-6 text-center text-sm text-muted-foreground">No apps match.</p>}
+                    </div>
+                </div>
+            )}
+
+            {saved.length > 0 ? (
+                <div className={cn(tileSurface, "divide-y divide-black/5 overflow-hidden dark:divide-white/10")}>
+                    {saved.map(app => (
+                        <LoginRow
+                            key={app.id}
+                            app={app}
+                            action="open"
+                            subtitle={notes[app.id]?.username || notes[app.id]?.hint || "Saved notes"}
+                            onOpen={() => onOpenNotes(app)}
+                        />
+                    ))}
+                </div>
+            ) : !adding && (
+                <EmptyState>
+                    Save usernames, passwords, keys and hints for your apps, then copy them in one tap. Tap Add login to start.
+                </EmptyState>
+            )}
+        </section>
     );
 }
 
@@ -298,9 +417,13 @@ export function MobileHome({
     onOpenPin,
     avatarUrl,
     onOpenAvatar,
+    onOpenAdmin,
+    notes,
+    onOpenNotes,
     onMoveApp,
     sceneSpace = false,
 }: MobileHomeProps) {
+    const hasNotes = (app: App) => hasNoteContent(notes[app.id]);
     const [editing, setEditing] = useState(false);
 
     // Order is kept per category (the grid groups by category first), so only
@@ -328,17 +451,32 @@ export function MobileHome({
                     user={user}
                     isFavorite={favorites.has(app.id)}
                     onToggleFavorite={onToggleFavorite}
+                    hasNotes={hasNotes(app)}
+                    onOpenNotes={onOpenNotes}
                 />
             ))}
         </div>
     );
 
-    const navItems: { key: MobileView | "menu"; label: string; icon: typeof Home }[] = [
-        { key: "dashboard", label: "Home", icon: Home },
-        { key: "favorites", label: "Favorites", icon: Heart },
-        { key: "recent", label: "Recent", icon: Clock },
-        { key: "menu", label: "Menu", icon: Menu },
-    ];
+    const renderNavTab = (key: MobileView, label: string, Icon: typeof Home) => {
+        const active = key === selectedView;
+        return (
+            <button
+                key={key}
+                type="button"
+                onClick={() => { setEditing(false); onSelectView(key); }}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                    "flex h-12 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors",
+                    active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                )}
+            >
+                <Icon className={cn("h-5 w-5", active && key === "favorites" && "fill-current")} />
+                <span>{label}</span>
+                <span className={cn("h-1 w-1 rounded-full bg-current transition-opacity", active ? "opacity-100" : "opacity-0")} />
+            </button>
+        );
+    };
 
     return (
         <div className={cn("min-h-screen w-full bg-gradient-to-b from-sky-200/80 via-sky-50 to-background dark:from-sky-950/60 dark:via-background dark:to-background md:hidden", sceneSpace ? "pb-60" : "pb-28")}>
@@ -355,23 +493,26 @@ export function MobileHome({
                     />
                     <span className="truncate text-2xl font-extrabold tracking-tight text-foreground font-outfit">{portalName}</span>
                 </div>
-                <button
-                    type="button"
-                    onClick={onOpenSearch}
-                    aria-label="Search apps"
-                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/30 active:scale-95"
-                >
-                    <Search className="h-5 w-5" />
-                </button>
             </header>
 
-            {/* Greeting: avatar opens the picture picker, text opens PIN settings */}
+            {/* Greeting: avatar opens admin shortcuts (admins) or the picture picker; text opens PIN settings */}
             <div className="relative z-[1] flex items-center gap-3 px-5 py-3">
-                <button type="button" onClick={onOpenAvatar} aria-label="Change profile picture" className="relative shrink-0 active:scale-95">
+                <button
+                    type="button"
+                    onClick={isAdmin ? onOpenAdmin : onOpenAvatar}
+                    aria-label={isAdmin ? "Open admin shortcuts" : "Change profile picture"}
+                    className="relative shrink-0 active:scale-95"
+                >
                     <UserAvatar src={avatarUrl} initials={initials} size={56} className="border-2 border-white shadow-sm dark:border-white/10" />
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white dark:border-zinc-900">
-                        <Camera className="h-3 w-3" />
-                    </span>
+                    {isAdmin ? (
+                        <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-amber-500 text-white shadow-sm dark:border-zinc-900">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                        </span>
+                    ) : (
+                        <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white dark:border-zinc-900">
+                            <Camera className="h-3 w-3" />
+                        </span>
+                    )}
                 </button>
                 <button type="button" onClick={onOpenPin} className="min-w-0 text-left">
                     <span className="block truncate text-lg font-bold text-foreground font-outfit">Hello, {displayName}</span>
@@ -413,7 +554,7 @@ export function MobileHome({
                         {featuredApps.length > 0 && (
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
-                                    {wideApps.map(app => <WideTile key={app.id} app={app} user={user} />)}
+                                    {wideApps.map(app => <WideTile key={app.id} app={app} user={user} hasNotes={hasNotes(app)} onOpenNotes={onOpenNotes} />)}
                                 </div>
                                 {squareApps.length > 0 && renderSquareGrid(squareApps)}
                             </div>
@@ -479,6 +620,8 @@ export function MobileHome({
                                                 user={user}
                                                 isFavorite={favorites.has(app.id)}
                                                 onToggleFavorite={onToggleFavorite}
+                                                hasNotes={hasNotes(app)}
+                                                onOpenNotes={onOpenNotes}
                                                 editing={editing}
                                                 dragging={dragging}
                                                 jiggleDelay={(index % 3) * 90}
@@ -500,6 +643,10 @@ export function MobileHome({
                     </section>
                 )}
 
+                {selectedView === "logins" && (
+                    <LoginsView apps={visibleApps} notes={notes} onOpenNotes={onOpenNotes} />
+                )}
+
                 {selectedView === "recent" && (
                     <section className="space-y-3">
                         <h2 className="px-1 text-lg font-bold text-foreground font-outfit">Recently Opened</h2>
@@ -510,29 +657,30 @@ export function MobileHome({
                 )}
             </div>
 
-            {/* Floating bottom tab bar; leaves room on the right for the chat bubble */}
-            <nav className="fixed bottom-4 left-4 right-[88px] z-40 flex h-14 items-center justify-around rounded-full border border-white/80 bg-white/95 px-1 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95">
-                {navItems.map(({ key, label, icon: Icon }) => {
-                    const active = key === selectedView;
-                    return (
-                        <button
-                            key={key}
-                            type="button"
-                            onClick={() => {
-                                setEditing(false);
-                                if (key === "menu") onOpenMenu();
-                                else onSelectView(key);
-                            }}
-                            className={cn(
-                                "flex h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors",
-                                active ? "bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" : "text-muted-foreground"
-                            )}
-                        >
-                            <Icon className={cn("h-5 w-5", active && key === "favorites" && "fill-current")} />
-                            <span>{label}</span>
-                        </button>
-                    );
-                })}
+            {/* Floating dock with a raised center search button; leaves room on the right for the chat bubble */}
+            <nav className="fixed bottom-4 left-3 right-[84px] z-40 flex h-16 items-center rounded-[28px] border border-white/80 bg-white/95 px-1 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95">
+                {renderNavTab("dashboard", "Home", Home)}
+                {renderNavTab("favorites", "Favorites", Heart)}
+                <div className="flex flex-1 justify-center">
+                    <button
+                        type="button"
+                        onClick={() => { setEditing(false); onOpenSearch(); }}
+                        aria-label="Search apps"
+                        className="-mt-7 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-blue-600 text-white shadow-lg shadow-blue-600/40 active:scale-95 dark:border-zinc-900"
+                    >
+                        <Search className="h-6 w-6" />
+                    </button>
+                </div>
+                {renderNavTab("logins", "Logins", KeyRound)}
+                <button
+                    type="button"
+                    onClick={() => { setEditing(false); onOpenMenu(); }}
+                    className="flex h-12 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-muted-foreground"
+                >
+                    <UserAvatar src={avatarUrl} initials={initials} size={22} className="text-[8px]" />
+                    <span>Me</span>
+                    <span className="h-1 w-1 opacity-0" />
+                </button>
             </nav>
         </div>
     );

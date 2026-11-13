@@ -5,7 +5,9 @@ import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Heart } from "lucide-react";
+import { ExternalLink, Heart, KeyRound } from "lucide-react";
+import { useAppNotesContext } from "@/hooks/use-app-notes";
+import { hasNoteContent } from "@/lib/app-notes";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { launchApp } from "@/lib/launch";
@@ -20,6 +22,9 @@ interface AppCardProps {
 export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
     const { user } = useAuth();
     const { handleFavorite, loading } = useToggleFavorite(app, isFavorite, onToggleFavorite);
+
+    const notesCtx = useAppNotesContext();
+    const hasNotes = hasNoteContent(notesCtx?.notes[app.id]);
 
     const handleLaunch = () => launchApp(user, app);
 
@@ -43,15 +48,32 @@ export function AppCard({ app, isFavorite, onToggleFavorite }: AppCardProps) {
                         )}
                         <CardTitle className="text-lg font-semibold tracking-tight transition-colors duration-300 group-hover:text-primary dark:group-hover:text-white">{app.name}</CardTitle>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-red-500 rounded-lg transition-colors"
-                        onClick={handleFavorite}
-                        disabled={loading}
-                    >
-                        <Heart className={cn("h-5 w-5 transition-transform duration-300 active:scale-75", isFavorite && "fill-current text-red-500")} />
-                    </Button>
+                    <div className="flex shrink-0 items-center">
+                        {notesCtx && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                title={hasNotes ? "Login notes" : "Add login notes"}
+                                aria-label={hasNotes ? `Login notes for ${app.name}` : `Add login notes for ${app.name}`}
+                                className={cn(
+                                    "h-8 w-8 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5",
+                                    hasNotes ? "text-amber-500" : "text-muted-foreground/60 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-amber-500"
+                                )}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); notesCtx.openNotes(app); }}
+                            >
+                                <KeyRound className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-red-500 rounded-lg transition-colors"
+                            onClick={handleFavorite}
+                            disabled={loading}
+                        >
+                            <Heart className={cn("h-5 w-5 transition-transform duration-300 active:scale-75", isFavorite && "fill-current text-red-500")} />
+                        </Button>
+                    </div>
                 </div>
                 <CardDescription className="line-clamp-2 min-h-[40px] text-sm text-muted-foreground/95 mt-1">{app.description}</CardDescription>
             </CardHeader>
