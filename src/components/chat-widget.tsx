@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X, Send, Sparkles, RefreshCw, AlertTriangle, Copy, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 
 interface Message {
@@ -146,7 +147,16 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/** Sign-in screens where the chat bubble shouldn't appear. */
+const HIDDEN_ON_PATHS = ["/login", "/oauth/authorize"];
+
 export function ChatWidget() {
+  const pathname = usePathname();
+  if (HIDDEN_ON_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return null;
+  return <ChatWidgetPanel />;
+}
+
+function ChatWidgetPanel() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
