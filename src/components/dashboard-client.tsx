@@ -5,12 +5,10 @@ import { App, Category } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, LayoutGrid, Heart, Clock, Shield, Settings, LogOut, Menu, X, Compass, Lock, Camera, Sparkles, KeyRound } from "lucide-react";
-import Link from "next/link";
+import { Search, LayoutGrid, Heart, Clock, Menu, X, Lock, Sparkles, KeyRound } from "lucide-react";
 import { AppCard } from "./app-card";
 import { useAuth } from "@/context/AuthContext";
 import { bootstrapAdmin } from "@/actions/auth";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { db } from "@/lib/firebase/client";
 import { collection, query, getDocs, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -31,16 +29,28 @@ import { Label } from "@/components/ui/label";
 import { checkUserPinStatus, setUserPin, removeUserPin } from "@/actions/pin";
 import { CommandPalette } from "@/components/command-palette";
 import { MobileHome } from "@/components/mobile-home";
-import { AvatarDialog, UserAvatar } from "@/components/avatar-dialog";
+import { AvatarDialog } from "@/components/avatar-dialog";
 import { useUserAvatar } from "@/hooks/use-user-avatar";
 import { useToday } from "@/hooks/use-today";
 import { SeasonalEffects, useSeasonalEffectsEnabled } from "@/components/seasonal-effects";
 import { BOTTOM_SCENE_EFFECTS, resolveSeasonalEffect, SeasonalSettings } from "@/lib/seasonal";
-import { Switch } from "@/components/ui/switch";
 import { AppNotesContext, useAppNotes } from "@/hooks/use-app-notes";
 import { AppNotesSheet } from "@/components/app-notes-sheet";
 import { AdminSheet } from "@/components/admin-sheet";
 import { launchApp } from "@/lib/launch";
+import { hasNoteContent } from "@/lib/app-notes";
+import { DropdownMenuCheckboxItem, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+    SidebarAccountMenu,
+    SidebarBrand,
+    SidebarCard,
+    SidebarNavItem,
+    SidebarSearchButton,
+    SidebarSectionLabel,
+    WorkspaceSwitch,
+    categoryDotColor,
+    usePortalBranding,
+} from "@/components/sidebar-kit";
 
 interface DashboardClientProps {
     initialApps: App[];
@@ -98,6 +108,7 @@ export function DashboardClient({
     const [notesApp, setNotesApp] = useState<App | null>(null);
     const notesContext = useMemo(() => ({ notes: appNotes, openNotes: setNotesApp }), [appNotes]);
     const [isAdminSheetOpen, setIsAdminSheetOpen] = useState(false);
+    const branding = usePortalBranding(globalSettings);
 
     // Seasonal background effect chosen in Portal Settings (resolved by date for "auto")
     const today = useToday();
@@ -464,6 +475,11 @@ export function DashboardClient({
         return visibleApps.filter(app => favorites.has(app.id));
     }, [visibleApps, favorites]);
 
+    const loginsCount = useMemo(
+        () => visibleApps.filter(app => hasNoteContent(appNotes[app.id])).length,
+        [visibleApps, appNotes]
+    );
+
     const categoryCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         visibleApps.forEach(app => {
@@ -534,271 +550,100 @@ export function DashboardClient({
     }
 
     const renderSidebarContent = () => {
+        const closeDrawer = () => setMobileSidebarOpen(false);
+        const showView = (view: typeof selectedView) => {
+            setSelectedView(view);
+            setSelectedCategory(null);
+            closeDrawer();
+        };
+        const isAllApps = selectedView === "dashboard" && !selectedCategory;
+
         return (
-            <div className="flex flex-col h-full text-sidebar-foreground">
-                {/* Brand / Logo */}
-                <div className="flex h-14 items-center gap-3 px-6 border-b border-sidebar-border shrink-0">
-                    <Image
-                        src={globalSettings?.logoUrl || "/vportal_logo_v2.png"}
-                        alt={globalSettings?.portalName || "VPortal Logo"}
-                        width={28}
-                        height={28}
-                        unoptimized
-                        className="w-7 h-7 rounded-md object-cover border border-sidebar-border/30 p-0.5 bg-sidebar-accent/50"
-                    />
-                    <span className="text-base font-bold tracking-tight text-sidebar-foreground font-outfit select-none">
-                        {globalSettings?.portalName || "VPortal"}
-                    </span>
+            <SidebarCard>
+                <div className="space-y-3 p-3 pb-2">
+                    <SidebarBrand portalName={branding.portalName} logoUrl={branding.logoUrl} />
+                    {isAdmin && <WorkspaceSwitch active="portal" onNavigate={closeDrawer} />}
+                    <SidebarSearchButton onClick={() => { closeDrawer(); setCommandPaletteOpen(true); }} />
                 </div>
 
-                {/* Navigation Links */}
-                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6 custom-scrollbar">
-                    {/* Views Section */}
-                    <div className="space-y-1">
-                        <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Views</span>
-                        
-                        <button
+                <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3 custom-scrollbar">
+                    <SidebarNavItem icon={LayoutGrid} label="All apps" count={visibleApps.length} active={isAllApps} onClick={() => showView("dashboard")} />
+                    <SidebarNavItem icon={Heart} label="Favorites" count={favorites.size || undefined} active={selectedView === "favorites"} onClick={() => showView("favorites")} />
+                    <SidebarNavItem icon={Clock} label="Recent" active={selectedView === "recent"} onClick={() => showView("recent")} />
+                    <SidebarNavItem icon={KeyRound} label="Logins" count={loginsCount || undefined} active={selectedView === "logins"} onClick={() => showView("logins")} />
+
+                    {orderedCategories.length > 0 && <SidebarSectionLabel>Categories</SidebarSectionLabel>}
+                    {orderedCategories.map((cat, index) => (
+                        <SidebarNavItem
+                            key={cat.id}
+                            label={cat.name}
+                            dotColor={categoryDotColor(index)}
+                            count={categoryCounts[cat.id] || 0}
+                            active={selectedCategory === cat.id}
                             onClick={() => {
+                                setSelectedCategory(cat.id);
                                 setSelectedView("dashboard");
-                                setSelectedCategory(null);
-                                setMobileSidebarOpen(false);
+                                closeDrawer();
                             }}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                                selectedView === "dashboard" && !selectedCategory
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                            )}
-                        >
-                            <LayoutGrid className="w-4 h-4 shrink-0" />
-                            <span>Dashboard</span>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                setSelectedView("favorites");
-                                setSelectedCategory(null);
-                                setMobileSidebarOpen(false);
+                            draggable
+                            onDragStart={() => setDraggingCategoryId(cat.id)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => {
+                                if (!draggingCategoryId) return;
+                                moveCategory(draggingCategoryId, cat.id);
+                                setDraggingCategoryId(null);
                             }}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                                selectedView === "favorites"
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                            )}
-                        >
-                            <Heart className="w-4 h-4 shrink-0" />
-                            <span>Favorites</span>
-                        </button>
+                            onDragEnd={() => setDraggingCategoryId(null)}
+                            className={cn(draggingCategoryId === cat.id && "opacity-40")}
+                        />
+                    ))}
+                </nav>
 
-                        <button
-                            onClick={() => {
-                                setSelectedView("recent");
-                                setSelectedCategory(null);
-                                setMobileSidebarOpen(false);
-                            }}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                                selectedView === "recent"
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                            )}
-                        >
-                            <Clock className="w-4 h-4 shrink-0" />
-                            <span>Recents</span>
-                        </button>
-
-                        <button
-                            onClick={() => {
-                                setSelectedView("logins");
-                                setSelectedCategory(null);
-                                setMobileSidebarOpen(false);
-                            }}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200",
-                                selectedView === "logins"
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                            )}
-                        >
-                            <KeyRound className="w-4 h-4 shrink-0" />
-                            <span>Logins</span>
-                        </button>
-                    </div>
-
-                    {/* Categories Section */}
-                    <div className="space-y-1">
-                        <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Categories</span>
-                        
-                        <button
-                            onClick={() => {
-                                setSelectedCategory(null);
-                                setMobileSidebarOpen(false);
-                            }}
-                            className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 group",
-                                selectedCategory === null && selectedView === "dashboard"
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                            )}
-                        >
-                            <Compass className="w-4 h-4 shrink-0" />
-                            <span className="flex-1 truncate text-left">All Categories</span>
-                            <span className={cn(
-                                "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                                selectedCategory === null && selectedView === "dashboard"
-                                    ? "bg-sidebar-background text-sidebar-accent-foreground"
-                                    : "bg-sidebar-accent/40 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
-                            )}>
-                                {visibleApps.length}
-                            </span>
-                        </button>
-
-                        {orderedCategories.map(cat => {
-                            const count = categoryCounts[cat.id] || 0;
-                            const isActive = selectedCategory === cat.id;
-                            return (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => {
-                                        setSelectedCategory(cat.id);
-                                        setSelectedView("dashboard");
-                                        setMobileSidebarOpen(false);
-                                    }}
-                                    draggable
-                                    onDragStart={() => setDraggingCategoryId(cat.id)}
-                                    onDragOver={(event) => event.preventDefault()}
-                                    onDrop={() => {
-                                        if (!draggingCategoryId) return;
-                                        moveCategory(draggingCategoryId, cat.id);
-                                        setDraggingCategoryId(null);
-                                    }}
-                                    onDragEnd={() => setDraggingCategoryId(null)}
-                                    className={cn(
-                                        "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 select-none text-left group",
-                                        isActive
-                                            ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border/10 font-semibold"
-                                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border border-transparent"
-                                    )}
-                                >
-                                    <div className="w-1.5 h-1.5 rounded-full bg-current opacity-70 shrink-0" />
-                                    <span className="truncate flex-1">{cat.name}</span>
-                                    <span className={cn(
-                                        "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                                        isActive
-                                            ? "bg-sidebar-background text-sidebar-accent-foreground"
-                                            : "bg-sidebar-accent/40 text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground"
-                                    )}>
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Admin Actions */}
-                    {isAdmin && (
-                        <div className="space-y-1">
-                            <span className="px-3 text-[10px] font-semibold tracking-wider uppercase text-sidebar-foreground/45 block mb-1.5 select-none">Admin</span>
-                            <Link
-                                href="/admin"
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
-                                onClick={() => setMobileSidebarOpen(false)}
-                            >
-                                <Shield className="w-4 h-4 shrink-0" />
-                                <span>Admin Portal</span>
-                            </Link>
-                            <Link
-                                href="/admin/settings"
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200"
-                                onClick={() => setMobileSidebarOpen(false)}
-                            >
-                                <Settings className="w-4 h-4 shrink-0" />
-                                <span>Portal Settings</span>
-                            </Link>
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Profile / User Panel */}
-                <div className="p-3 border-t border-sidebar-border space-y-2 shrink-0">
-                    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-sidebar-accent/40">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <button
-                                type="button"
-                                onClick={() => setIsAvatarDialogOpen(true)}
-                                title="Change profile picture"
-                                className="relative shrink-0 rounded-full group/avatar"
-                            >
-                                <UserAvatar src={avatarUrl} initials={userInitials} size={28} className="border border-sidebar-border/50 text-[10px]" />
-                                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover/avatar:opacity-100">
-                                    <Camera className="h-3 w-3" />
-                                </span>
-                            </button>
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-xs font-semibold truncate text-sidebar-foreground leading-tight">
-                                    {user?.displayName || (user?.isAnonymous ? "Guest" : user?.email?.split("@")[0])}
-                                </span>
-                                <span className="text-[9px] text-sidebar-foreground/50 truncate leading-tight mt-0.5">
-                                    {user?.isAnonymous ? "Guest Session" : (isAdmin ? "Administrator" : "Standard User")}
-                                </span>
-                            </div>
-                        </div>
-                        <ThemeToggle />
-                    </div>
-                    {seasonalEffect && (
-                        <label className="w-full flex items-center justify-between gap-2 border border-sidebar-border/40 hover:bg-sidebar-accent/50 text-xs px-3 h-8 rounded-md cursor-pointer transition-all">
-                            <span className="flex items-center gap-2 text-sidebar-foreground/80">
-                                <Sparkles className="w-3.5 h-3.5 text-sidebar-foreground/60" />
-                                Seasonal effects
-                            </span>
-                            <Switch size="sm" checked={seasonalEnabled} onCheckedChange={setSeasonalEnabled} aria-label="Seasonal effects" />
-                        </label>
-                    )}
-                    <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setIsPinDialogOpen(true)} 
-                        className="w-full flex items-center justify-center gap-2 border border-sidebar-border/40 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-xs py-1.5 h-8 transition-all rounded-md"
+                <div className="border-t border-sidebar-border p-2">
+                    <SidebarAccountMenu
+                        name={user?.displayName || (user?.isAnonymous ? "Guest" : user?.email?.split("@")[0]) || "User"}
+                        role={user?.isAnonymous ? "Guest session" : isAdmin ? "Administrator" : "Standard user"}
+                        avatarUrl={avatarUrl}
+                        initials={userInitials}
+                        onChangePhoto={() => { closeDrawer(); setIsAvatarDialogOpen(true); }}
+                        onSignOut={() => signOut()}
                     >
-                        <Lock className="w-3.5 h-3.5 text-sidebar-foreground/60" />
-                        <span className="text-sidebar-foreground/80">Login PIN</span>
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => signOut()} 
-                        className="w-full flex items-center justify-center gap-2 border border-sidebar-border/40 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 text-xs py-1.5 h-8 transition-all rounded-md"
-                    >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Sign Out</span>
-                    </Button>
+                        <DropdownMenuItem onSelect={() => { closeDrawer(); setIsPinDialogOpen(true); }}>
+                            <Lock /> Login PIN
+                        </DropdownMenuItem>
+                        {seasonalEffect && (
+                            <DropdownMenuCheckboxItem
+                                checked={seasonalEnabled}
+                                onCheckedChange={(checked) => setSeasonalEnabled(checked === true)}
+                                onSelect={(e) => e.preventDefault()}
+                            >
+                                <Sparkles /> Seasonal effects
+                            </DropdownMenuCheckboxItem>
+                        )}
+                    </SidebarAccountMenu>
                 </div>
-            </div>
+            </SidebarCard>
         );
     };
 
     return (
         <AppNotesContext.Provider value={notesContext}>
         <div className="min-h-screen flex w-full bg-background text-foreground">
-            {/* Desktop Sidebar (Left Panel) */}
-            <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-screen sticky top-0 z-20 shrink-0">
+            {/* Desktop Sidebar (floating card) */}
+            <aside className="hidden md:flex w-[17rem] h-screen sticky top-0 z-20 shrink-0 p-3 pr-0">
                 {renderSidebarContent()}
             </aside>
 
-            {/* Mobile Sidebar (Collapsible Drawer Overlay) */}
+            {/* Mobile Sidebar (floating drawer) */}
             {mobileSidebarOpen && (
                 <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-300">
-                    {/* Backdrop click close */}
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
-                    
-                    {/* Sidebar Drawer panel */}
-                    <aside className="relative w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border h-full flex flex-col p-0 shadow-2xl animate-in slide-in-from-left duration-300">
-                        {/* Close button inside panel */}
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
+                    <aside className="relative h-full w-[min(20rem,85vw)] p-3 animate-in slide-in-from-left duration-300">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-2 top-2 h-8 w-8 rounded-lg hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                            aria-label="Close menu"
+                            className="absolute right-5 top-5 z-10 h-8 w-8 rounded-lg hover:bg-sidebar-accent"
                             onClick={() => setMobileSidebarOpen(false)}
                         >
                             <X className="h-4 w-4" />

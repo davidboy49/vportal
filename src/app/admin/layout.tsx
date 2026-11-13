@@ -79,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAdmin) return null;
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ "--sidebar-width": "17rem" } as React.CSSProperties}>
       <div className="min-h-screen flex w-full">
         {/* Shadcn Sidebar */}
         <AppSidebar />

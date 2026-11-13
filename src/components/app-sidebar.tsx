@@ -1,101 +1,75 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft } from "lucide-react";
+import { useUserAvatar } from "@/hooks/use-user-avatar";
 import { ADMIN_NAV_LINKS } from "@/lib/admin-nav";
+import { Sidebar, useSidebar } from "@/components/ui/sidebar";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  SidebarGroup,
-  SidebarGroupContent,
-} from "@/components/ui/sidebar";
+  SidebarAccountMenu,
+  SidebarBrand,
+  SidebarCard,
+  SidebarNavItem,
+  SidebarSectionLabel,
+  WorkspaceSwitch,
+  usePortalBranding,
+} from "@/components/sidebar-kit";
 
+/** Admin portal sidebar, built from the same pieces as the dashboard sidebar. */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  const { avatarUrl } = useUserAvatar(user);
+  const branding = usePortalBranding();
+  const closeMobile = () => setOpenMobile(false);
 
-  const navLinks = ADMIN_NAV_LINKS;
+  const [overview, ...sections] = ADMIN_NAV_LINKS;
 
   return (
-    <Sidebar {...props}>
-      <SidebarHeader className="border-b border-sidebar-border py-4 px-4">
-        <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6 text-blue-600 dark:text-blue-500 shrink-0" />
-          <span className="text-lg font-black tracking-tight text-sidebar-foreground font-outfit select-none">
-            Admin Portal
-          </span>
+    <Sidebar
+      variant="floating"
+      className="p-3 pr-0 [&>[data-slot=sidebar-inner]]:bg-transparent [&>[data-slot=sidebar-inner]]:shadow-none [&>[data-slot=sidebar-inner]]:ring-0"
+      {...props}
+    >
+      <SidebarCard className="max-md:rounded-none max-md:border-0 max-md:shadow-none">
+        <div className="space-y-3 p-3 pb-2">
+          <SidebarBrand portalName={branding.portalName} logoUrl={branding.logoUrl} />
+          <WorkspaceSwitch active="admin" onNavigate={closeMobile} />
         </div>
-      </SidebarHeader>
 
-      <SidebarContent className="py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navLinks.map((link) => {
-                const Icon = link.icon;
-                const isActive = pathname === link.href;
-                return (
-                  <SidebarMenuItem key={link.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={link.label}
-                      className="w-full"
-                    >
-                      <Link href={link.href} className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">{link.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3 custom-scrollbar">
+          <SidebarNavItem
+            href={overview.href}
+            icon={overview.icon}
+            label={overview.label}
+            active={pathname === overview.href}
+            onClick={closeMobile}
+          />
+          <SidebarSectionLabel>Manage</SidebarSectionLabel>
+          {sections.map((link) => (
+            <SidebarNavItem
+              key={link.href}
+              href={link.href}
+              icon={link.icon}
+              label={link.label}
+              active={pathname === link.href || pathname.startsWith(`${link.href}/`)}
+              onClick={closeMobile}
+            />
+          ))}
+        </nav>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border gap-3">
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-sidebar-accent/50">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs uppercase shrink-0 border border-blue-500/10">
-              {user?.displayName?.[0] || user?.email?.[0] || "A"}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold truncate text-sidebar-foreground leading-tight">
-                {user?.displayName || user?.email?.split("@")[0] || "Admin"}
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
-                Portal Admin
-              </span>
-            </div>
-          </div>
-          <ThemeToggle />
+        <div className="border-t border-sidebar-border p-2">
+          <SidebarAccountMenu
+            name={user?.displayName || user?.email?.split("@")[0] || "Admin"}
+            role="Administrator"
+            avatarUrl={avatarUrl}
+            initials={(user?.displayName || user?.email || "A").slice(0, 2)}
+            onSignOut={() => signOut()}
+          />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-          className="w-full flex items-center justify-center gap-2 border border-sidebar-border hover:bg-sidebar-accent text-xs py-2 transition-all duration-300 rounded-lg font-medium"
-        >
-          <Link href="/">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Exit to Dashboard</span>
-          </Link>
-        </Button>
-      </SidebarFooter>
-      <SidebarRail />
+      </SidebarCard>
     </Sidebar>
   );
 }
